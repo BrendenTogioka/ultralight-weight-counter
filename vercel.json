@@ -2,8 +2,5 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "devCommand": "next dev --turbopack",
-  "installCommand": "npm install",
-  "engines": {
-    "node": "22.x"
-  }
+  "installCommand": "npm install"
 }
