@@ -8,7 +8,7 @@ import { passwordSchema } from '@/lib/validation'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { toast } from 'sonner'
-import { Loader2, Scale, User as UserIcon, Lock, Moon, Sun, LayoutGrid, List } from 'lucide-react'
+import { Loader2, Scale, User as UserIcon, Lock, Moon, Sun, LayoutGrid, List, Check } from 'lucide-react'
 
 interface Props {
   settings: UserSettings | null
@@ -19,7 +19,6 @@ export function SettingsClient({ settings, user }: Props) {
   const { unit, setUnit } = useUnit()
   const { theme, setTheme } = useTheme()
   const [defaultUnit, setDefaultUnit] = useState<WeightUnit>(settings?.default_unit ?? 'oz')
-  const [savingUnit, setSavingUnit] = useState(false)
   const [defaultView, setDefaultView] = useState<'list' | 'grid'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('gear_view') as 'list' | 'grid') ?? 'list'
@@ -32,21 +31,16 @@ export function SettingsClient({ settings, user }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
 
-  async function handleSaveUnit() {
-    setSavingUnit(true)
+  async function handleSelectUnit(u: WeightUnit) {
+    setDefaultUnit(u)
+    setUnit(u)
     const supabase = createClient()
     const { error } = await supabase
       .from('user_settings')
-      .update({ default_unit: defaultUnit })
+      .update({ default_unit: u })
       .eq('user_id', user.id)
-
-    if (error) {
-      toast.error('Failed to save settings')
-    } else {
-      setUnit(defaultUnit)
-      toast.success('Default unit saved')
-    }
-    setSavingUnit(false)
+    if (error) toast.error('Failed to save unit preference')
+    else toast.success('Unit preference saved', { duration: 1500 })
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -103,29 +97,22 @@ export function SettingsClient({ settings, user }: Props) {
           <p className="text-sm text-muted-foreground mb-4">
             Choose which unit to display weights in by default. You can always toggle this in the sidebar.
           </p>
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3">
             {(['oz', 'g'] as WeightUnit[]).map(u => (
               <button
                 key={u}
-                onClick={() => setDefaultUnit(u)}
-                className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                onClick={() => handleSelectUnit(u)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
                   defaultUnit === u
                     ? 'border-primary bg-accent text-accent-foreground'
                     : 'border-border text-muted-foreground hover:border-border/80 hover:bg-secondary/50'
                 }`}
               >
+                {defaultUnit === u && <Check className="h-3.5 w-3.5" />}
                 {u === 'oz' ? 'Ounces (oz)' : 'Grams (g)'}
               </button>
             ))}
           </div>
-          <button
-            onClick={handleSaveUnit}
-            disabled={savingUnit || defaultUnit === settings?.default_unit}
-            className="w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {savingUnit && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save preference
-          </button>
         </div>
       </section>
 

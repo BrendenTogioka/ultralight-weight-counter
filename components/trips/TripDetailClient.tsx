@@ -342,39 +342,12 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                           </button>
                         </div>
 
-                        {/* Row 2: wear type + quantity */}
-                        <div className="flex items-center gap-2 mt-1.5 pl-0">
-                          <select
-                            value={item.wear_type}
-                            onChange={e => handleUpdateWearType(item, e.target.value as WearType)}
-                            aria-label={`Wear type for ${gear.name}`}
-                            className="text-xs border border-input rounded-lg px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                          >
-                            <option value="base">Base</option>
-                            <option value="worn">Worn</option>
-                            <option value="consumable">Consumable</option>
-                          </select>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              aria-label={`Decrease quantity of ${gear.name}`}
-                              className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs disabled:opacity-40"
-                            >
-                              −
-                            </button>
-                            <span className="text-sm font-medium w-5 text-center tabular-nums">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
-                              aria-label={`Increase quantity of ${gear.name}`}
-                              className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs"
-                            >
-                              +
-                            </button>
-                          </div>
+                        {/* Wear type badge */}
+                        <div className="mt-1">
+                          <span className="text-xs text-muted-foreground capitalize">{item.wear_type}</span>
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-muted-foreground"> · ×{item.quantity}</span>
+                          )}
                         </div>
                       </div>
                     )

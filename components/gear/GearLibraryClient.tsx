@@ -274,13 +274,13 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
             <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('name')}>
               Name {filters.sortField === 'name' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <button className="hidden sm:block hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
+            <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
               Brand {filters.sortField === 'brand' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <button className="hidden sm:block hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
+            <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
               Category {filters.sortField === 'category' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <button className="hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
+            <button className="w-16 sm:w-20 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
               Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
             <div className="w-14 sm:w-16" />
