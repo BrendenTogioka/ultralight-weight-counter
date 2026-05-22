@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase/client'
 import { tripSchema } from '@/lib/validation'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { pageVariants } from '@/lib/motion'
 
 interface ExistingTrip {
   id: string
@@ -101,7 +103,12 @@ export function NewTripClient({ existingTrips, userId }: Props) {
   }
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-2xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-2xl mx-auto"
+    >
       {/* Back */}
       <Link
         href="/dashboard"
@@ -259,7 +266,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

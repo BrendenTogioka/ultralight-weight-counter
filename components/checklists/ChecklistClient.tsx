@@ -8,6 +8,8 @@ import type { Checklist, ChecklistItem } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
 interface Props {
   checklist: Checklist
@@ -67,7 +69,12 @@ export function ChecklistClient({ checklist: initial }: Props) {
   }
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-2xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-2xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-6">
         <Link
@@ -112,11 +119,17 @@ export function ChecklistClient({ checklist: initial }: Props) {
           <p className="text-sm text-muted-foreground">No items in this checklist.</p>
         </div>
       ) : (
-        <div className="border border-border rounded-xl overflow-hidden">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="border border-border rounded-xl overflow-hidden"
+        >
           {items.map((item, idx) => {
             const isLast = idx === items.length - 1
             return (
-              <button
+              <motion.button
+                variants={staggerItem}
                 key={item.id}
                 onClick={() => handleToggle(item)}
                 className={cn(
@@ -157,10 +170,10 @@ export function ChecklistClient({ checklist: initial }: Props) {
                     </p>
                   )}
                 </div>
-              </button>
+              </motion.button>
             )
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Notes */}
@@ -188,6 +201,6 @@ export function ChecklistClient({ checklist: initial }: Props) {
           Delete checklist
         </button>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -8,6 +8,8 @@ import { toOz } from '@/lib/calculations'
 import { createClient } from '@/lib/supabase/client'
 import { gearItemSchema, validateImageFile } from '@/lib/validation'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
+import { backdropVariants, modalCardVariants } from '@/lib/motion'
 
 interface Props {
   item: GearItem | null
@@ -168,8 +170,18 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-in">
+      <motion.div
+        variants={backdropVariants}
+        initial="initial"
+        animate="animate"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        variants={modalCardVariants}
+        initial="initial"
+        animate="animate"
+        className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
           <h2 className="text-base font-semibold text-foreground">
@@ -339,7 +351,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   )
 }

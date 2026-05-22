@@ -9,6 +9,8 @@ import { useUnit } from '@/components/providers/UnitProvider'
 import { GearItemCard } from '@/components/gear/GearItemCard'
 import { GearItemRow } from '@/components/gear/GearItemRow'
 import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
+import { motion } from 'framer-motion'
+import { pageVariants } from '@/lib/motion'
 
 type ViewMode = 'grid' | 'list'
 
@@ -128,7 +130,12 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
   }
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-6xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-6xl mx-auto"
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -307,6 +314,6 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
           onSaved={handleItemSaved}
         />
       )}
-    </div>
+    </motion.div>
   )
 }

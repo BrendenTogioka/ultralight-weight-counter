@@ -9,6 +9,8 @@ import { useUnit } from '@/components/providers/UnitProvider'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { toast } from 'sonner'
 import { Loader2, Scale, User as UserIcon, Lock, Moon, Sun, LayoutGrid, List, Check } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { pageVariants } from '@/lib/motion'
 
 interface Props {
   settings: UserSettings | null
@@ -67,7 +69,12 @@ export function SettingsClient({ settings, user }: Props) {
   }
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-2xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-2xl mx-auto"
+    >
       <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-8">Settings</h1>
 
       {/* Account info */}
@@ -212,7 +219,7 @@ export function SettingsClient({ settings, user }: Props) {
           </form>
         </div>
       </section>
-    </div>
+    </motion.div>
   )
 }
 

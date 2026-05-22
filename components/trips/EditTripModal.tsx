@@ -5,6 +5,8 @@ import { X, Loader2 } from 'lucide-react'
 import type { Trip } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
+import { backdropVariants, modalCardVariants } from '@/lib/motion'
 
 interface Props {
   trip: Trip
@@ -48,8 +50,18 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md">
+      <motion.div
+        variants={backdropVariants}
+        initial="initial"
+        animate="animate"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        variants={modalCardVariants}
+        initial="initial"
+        animate="animate"
+        className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md">
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">Edit trip</h2>
           <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
@@ -118,7 +130,7 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   )
 }

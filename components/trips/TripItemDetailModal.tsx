@@ -8,6 +8,8 @@ import { getEffectiveWeightOz, formatWeight } from '@/lib/calculations'
 import { CATEGORY_ICONS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
+import { backdropVariants, modalCardVariants, mobileSheetVariants } from '@/lib/motion'
 
 interface Props {
   item: TripItem
@@ -59,8 +61,18 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Pro
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
+      <motion.div
+        variants={backdropVariants}
+        initial="initial"
+        animate="animate"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        variants={modalCardVariants}
+        initial="initial"
+        animate="animate"
+        className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -171,7 +183,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Pro
             Done
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -30,8 +30,11 @@ import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
 import { TripItemDetailModal } from '@/components/trips/TripItemDetailModal'
 import { EditTripModal } from '@/components/trips/EditTripModal'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
+import { WeightCharts } from '@/components/trips/WeightCharts'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
+import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
 type WearFilter = 'all' | WearType
 
@@ -298,7 +301,12 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     : null
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-4xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-4xl mx-auto"
+    >
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-6">
@@ -419,6 +427,11 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       {/* Weight summary */}
       <WeightSummaryBar summary={summary} unit={unit} />
 
+      {/* Charts */}
+      {items.length > 0 && (
+        <WeightCharts items={items} unit={unit} tripId={trip.id} userId={userId} />
+      )}
+
       {/* Wear type filter chips */}
       {items.length > 0 && (
         <div className="flex items-center gap-2 mt-5">
@@ -440,7 +453,12 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       )}
 
       {/* ── Category groups ── */}
-      <div className="mt-4 flex flex-col gap-4">
+      <motion.div
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="mt-4 flex flex-col gap-4"
+      >
         {categoryWeights.length === 0 && (
           <div className="border border-dashed border-border rounded-2xl p-16 text-center">
             <p className="font-medium text-foreground mb-1">
@@ -466,7 +484,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         {categoryWeights.map(({ category, weight_oz, items: catItems }) => {
           const collapsed = collapsedCategories.has(category)
           return (
-            <div key={category} className="border border-border rounded-xl overflow-hidden">
+            <motion.div key={category} variants={staggerItem} className="border border-border rounded-xl overflow-hidden">
               {/* Category header */}
               <button
                 onClick={() => toggleCategory(category)}
@@ -528,10 +546,10 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                   </SortableContext>
                 </DndContext>
               )}
-            </div>
+            </motion.div>
           )
         })}
-      </div>
+      </motion.div>
 
       {/* Modals */}
       {showAddModal && (
@@ -561,7 +579,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           onSaved={updated => { setTrip(prev => ({ ...prev, ...updated })); setShowEditTrip(false) }}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
 

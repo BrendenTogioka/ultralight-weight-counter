@@ -3,10 +3,13 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Plus, Mountain, ArrowUpDown } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { TripCard } from '@/components/trips/TripCard'
+import { TripChartsSection } from '@/components/dashboard/TripChartsSection'
 import type { Trip } from '@/types'
 import { calculateWeightSummary } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
+import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
 type SortKey = 'updated_at' | 'created_at' | 'name' | 'weight'
 type SortDir = 'asc' | 'desc'
@@ -59,7 +62,12 @@ export function DashboardClient({ trips }: Props) {
   ]
 
   return (
-    <div className="px-4 sm:px-8 py-8 max-w-5xl mx-auto">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="px-4 sm:px-8 py-8 max-w-5xl mx-auto"
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -119,13 +127,23 @@ export function DashboardClient({ trips }: Props) {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
             {sortedTrips.map(trip => (
-              <TripCard key={trip.id} trip={trip} />
+              <motion.div key={trip.id} variants={staggerItem}>
+                <TripCard trip={trip} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </section>
+
+      {/* Analytics charts (only shown when 2+ trips exist) */}
+      <TripChartsSection trips={trips} />
 
       {/* Templates */}
       {templates.length > 0 && (
@@ -133,13 +151,20 @@ export function DashboardClient({ trips }: Props) {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
             Templates
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
             {templates.map(trip => (
-              <TripCard key={trip.id} trip={trip} isTemplate />
+              <motion.div key={trip.id} variants={staggerItem}>
+                <TripCard trip={trip} isTemplate />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
       )}
-    </div>
+    </motion.div>
   )
 }
