@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 220 15% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 10%;
+
+    --primary: 215 100% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 96%;
+    --secondary-foreground: 220 15% 20%;
+
+    --muted: 220 10% 96%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 215 100% 95%;
+    --accent-foreground: 215 100% 35%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 215 100% 45%;
+
+    --radius: 0.75rem;
+
+    /* Weight bar colors */
+    --weight-base: 215 100% 55%;
+    --weight-worn: 270 70% 60%;
+    --weight-consumable: 38 92% 55%;
+  }
+
+  .dark {
+    --background: 222 20% 10%;
+    --foreground: 220 15% 92%;
+
+    --card: 222 20% 13%;
+    --card-foreground: 220 15% 92%;
+
+    --primary: 215 100% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 15% 18%;
+    --secondary-foreground: 220 15% 80%;
+
+    --muted: 222 15% 18%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 215 50% 20%;
+    --accent-foreground: 215 100% 72%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 15% 20%;
+    --input: 222 15% 20%;
+    --ring: 215 100% 58%;
+
+    /* Weight bar colors */
+    --weight-base: 215 100% 60%;
+    --weight-worn: 270 65% 65%;
+    --weight-consumable: 38 90% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-variation-settings: normal;
+  }
+
+  /* Inter number rendering — tabular for weights */
+  .tabular-nums {
+    font-feature-settings: "tnum";
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* Weight type badges */
+  .badge-base {
+    @apply bg-blue-50 text-blue-700 border border-blue-200;
+  }
+  .badge-worn {
+    @apply bg-purple-50 text-purple-700 border border-purple-200;
+  }
+  .badge-consumable {
+    @apply bg-amber-50 text-amber-700 border border-amber-200;
+  }
+
+  /* Subtle card hover */
+  .card-hover {
+    @apply transition-all duration-150 hover:shadow-md hover:-translate-y-px;
+  }
+
+  /* Weight bar */
+  .weight-bar-base {
+    background-color: hsl(var(--weight-base));
+  }
+  .weight-bar-worn {
+    background-color: hsl(var(--weight-worn));
+  }
+  .weight-bar-consumable {
+    background-color: hsl(var(--weight-consumable));
+  }
+}

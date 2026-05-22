@@ -1,0 +1,355 @@
+'use client'
+
+import { useState, useRef } from 'react'
+import { X, Upload, Loader2 } from 'lucide-react'
+import type { GearItem, GearType, WeightUnit } from '@/types'
+import { GEAR_CATEGORIES } from '@/lib/utils'
+import { toOz } from '@/lib/calculations'
+import { createClient } from '@/lib/supabase/client'
+import { gearItemSchema, validateImageFile } from '@/lib/validation'
+import { toast } from 'sonner'
+
+interface Props {
+  item: GearItem | null
+  gearTypes: GearType[]
+  userId: string
+  onClose: () => void
+  onSaved: (item: GearItem, isNew: boolean) => void
+  // Optional: pre-fill some fields when adding from trip
+  prefill?: Partial<GearItem>
+}
+
+const DEFAULT_TYPES = [
+  'Backpack', 'Tent', 'Sleeping Bag', 'Sleeping Pad', 'Quilt', 'Tarp', 'Bivy',
+  'Stove', 'Fuel', 'Cook Pot', 'Utensils', 'Water Filter', 'Water Bottle',
+  'Reservoir', 'Headlamp', 'Trekking Poles', 'First Aid', 'Navigation',
+  'Rain Jacket', 'Insulation Layer', 'Base Layer', 'Pants', 'Footwear',
+  'Gaiters', 'Gloves', 'Hat', 'Sunglasses', 'Phone', 'Battery/Charger',
+  'Camera', 'Bear Canister', 'Stuff Sack', 'Dry Bag', 'Cord/Rope',
+  'Repair Kit', 'Hygiene', 'Sunscreen', 'Food', 'Snacks', 'Other',
+]
+
+export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, prefill }: Props) {
+  const isEdit = !!item
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const allTypeNames = [
+    ...new Set([
+      ...DEFAULT_TYPES,
+      ...gearTypes.filter(t => t.user_id === userId).map(t => t.name),
+    ]),
+  ].sort()
+
+  const [form, setForm] = useState({
+    name: item?.name ?? prefill?.name ?? '',
+    brand: item?.brand ?? prefill?.brand ?? '',
+    category: item?.category ?? prefill?.category ?? 'Pack',
+    type: item?.type ?? prefill?.type ?? '',
+    customType: '',
+    useCustomType: false,
+    weight: item ? item.weight_oz.toString() : '',
+    weight_unit: (item?.weight_unit ?? 'oz') as WeightUnit,
+    notes: item?.notes ?? '',
+  })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url ?? null)
+  const [saving, setSaving] = useState(false)
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateImageFile(file)
+    if (err) {
+      toast.error(err)
+      e.target.value = ''
+      return
+    }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    // Validate with Zod
+    const parsed = gearItemSchema.safeParse({
+      name: form.name,
+      brand: form.brand || undefined,
+      category: form.category,
+      type: (form.useCustomType ? form.customType : form.type) || undefined,
+      weight: parseFloat(form.weight) || 0,
+      weight_unit: form.weight_unit,
+      notes: form.notes || undefined,
+    })
+
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]
+      toast.error(firstError.message)
+      return
+    }
+
+    setSaving(true)
+    const supabase = createClient()
+
+    try {
+      let image_url = item?.image_url ?? null
+
+      // Upload image if new one selected
+      if (imageFile) {
+        const ext = imageFile.name.split('.').pop()
+        const path = `${userId}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('gear-images')
+          .upload(path, imageFile, { upsert: true })
+
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('gear-images')
+          .getPublicUrl(path)
+        image_url = urlData.publicUrl
+      }
+
+      const finalType = form.useCustomType ? form.customType.trim() : form.type
+      const weightOz = toOz(parseFloat(form.weight) || 0, form.weight_unit)
+
+      // Save custom type to gear_types if new
+      if (form.useCustomType && form.customType.trim()) {
+        const typeName = form.customType.trim()
+        const exists = gearTypes.some(t => t.name.toLowerCase() === typeName.toLowerCase())
+        if (!exists) {
+          await supabase.from('gear_types').insert({
+            user_id: userId,
+            name: typeName,
+          })
+        }
+      }
+
+      const payload = {
+        user_id: userId,
+        name: form.name.trim(),
+        brand: form.brand.trim() || null,
+        category: form.category,
+        type: finalType || null,
+        weight_oz: weightOz,
+        weight_unit: form.weight_unit,
+        image_url,
+        notes: form.notes.trim() || null,
+      }
+
+      if (isEdit) {
+        const { data, error } = await supabase
+          .from('gear_items')
+          .update(payload)
+          .eq('id', item.id)
+          .select()
+          .single()
+        if (error) throw error
+        toast.success('Gear item updated')
+        onSaved(data, false)
+      } else {
+        const { data, error } = await supabase
+          .from('gear_items')
+          .insert(payload)
+          .select()
+          .single()
+        if (error) throw error
+        toast.success(`"${data.name}" added to library`)
+        onSaved(data, true)
+      }
+
+      onClose()
+    } catch (err: any) {
+      toast.error(err.message ?? 'Something went wrong')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
+          <h2 className="text-base font-semibold text-foreground">
+            {isEdit ? 'Edit gear item' : 'Add gear item'}
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+          {/* Image upload */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">Photo (optional)</label>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center overflow-hidden bg-secondary/30"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
+                  <Upload className="h-5 w-5" />
+                  <span className="text-xs">Click to upload</span>
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+            />
+          </div>
+
+          {/* Name */}
+          <Field label="Name *">
+            <input
+              required
+              value={form.name}
+              onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+              className={inputCls}
+              placeholder="e.g. Zpacks Arc Haul Ultra" maxLength={100}
+            />
+          </Field>
+
+          {/* Brand */}
+          <Field label="Brand">
+            <input
+              value={form.brand}
+              onChange={e => setForm(p => ({ ...p, brand: e.target.value }))}
+              className={inputCls}
+              placeholder="e.g. Zpacks" maxLength={80}
+            />
+          </Field>
+
+          {/* Category */}
+          <Field label="Category *">
+            <select
+              required
+              value={form.category}
+              onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+              className={inputCls}
+            >
+              {GEAR_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </Field>
+
+          {/* Type */}
+          <Field label="Type">
+            {form.useCustomType ? (
+              <div className="flex gap-2">
+                <input
+                  value={form.customType}
+                  onChange={e => setForm(p => ({ ...p, customType: e.target.value }))}
+                  className={inputCls}
+                  placeholder="Enter custom type" maxLength={60}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, useCustomType: false, customType: '' }))}
+                  className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <select
+                  value={form.type}
+                  onChange={e => setForm(p => ({ ...p, type: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">Select type…</option>
+                  {allTypeNames.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, useCustomType: true }))}
+                  className="text-xs text-primary hover:text-primary/80 shrink-0 whitespace-nowrap"
+                >
+                  + Custom
+                </button>
+              </div>
+            )}
+          </Field>
+
+          {/* Weight */}
+          <Field label="Weight *">
+            <div className="flex gap-2">
+              <input
+                required
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.weight}
+                onChange={e => setForm(p => ({ ...p, weight: e.target.value }))}
+                className={inputCls}
+                placeholder="0.00"
+              />
+              <select
+                value={form.weight_unit}
+                onChange={e => setForm(p => ({ ...p, weight_unit: e.target.value as WeightUnit }))}
+                className="px-3 py-2.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
+              >
+                <option value="oz">oz</option>
+                <option value="g">g</option>
+              </select>
+            </div>
+          </Field>
+
+          {/* Notes */}
+          <Field label="Notes">
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+              className={`${inputCls} resize-none`}
+              rows={2}
+              placeholder="Optional notes…" maxLength={500}
+            />
+          </Field>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEdit ? 'Save changes' : 'Add to library'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+const inputCls =
+  'w-full px-3.5 py-2.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring transition-shadow'
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      {children}
+    </div>
+  )
+}
