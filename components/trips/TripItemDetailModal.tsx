@@ -1,0 +1,177 @@
+'use client'
+
+import { useState } from 'react'
+import { X, Trash2 } from 'lucide-react'
+import Image from 'next/image'
+import type { TripItem, WearType } from '@/types'
+import { getEffectiveWeightOz, formatWeight } from '@/lib/calculations'
+import { CATEGORY_ICONS } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+
+interface Props {
+  item: TripItem
+  onClose: () => void
+  onUpdated: (item: TripItem) => void
+  onRemoved: (id: string) => void
+}
+
+export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Props) {
+  const gear = item.gear_item!
+  const [wearType, setWearType] = useState<WearType>(item.wear_type)
+  const [quantity, setQuantity] = useState(item.quantity)
+  const [saving, setSaving] = useState(false)
+
+  const weightOz = getEffectiveWeightOz(item)
+  const totalOz = weightOz * quantity
+
+  async function handleSave() {
+    if (wearType === item.wear_type && quantity === item.quantity) {
+      onClose()
+      return
+    }
+    setSaving(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('trip_items')
+      .update({ wear_type: wearType, quantity })
+      .eq('id', item.id)
+
+    if (error) {
+      toast.error('Failed to update item')
+      setSaving(false)
+      return
+    }
+    onUpdated({ ...item, wear_type: wearType, quantity })
+    toast.success('Item updated')
+    onClose()
+  }
+
+  async function handleRemove() {
+    if (!confirm(`Remove "${gear.name}" from this trip?`)) return
+    const supabase = createClient()
+    const { error } = await supabase.from('trip_items').delete().eq('id', item.id)
+    if (error) { toast.error('Failed to remove item'); return }
+    onRemoved(item.id)
+    toast.success('Item removed')
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-sm font-semibold text-foreground truncate pr-2">{gear.name}</h2>
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground shrink-0">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {/* Image + basic info */}
+          <div className="flex gap-3 items-start">
+            {gear.image_url ? (
+              <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
+                <Image src={gear.image_url} alt={gear.name} width={64} height={64} className="object-cover w-full h-full" />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                <span className="text-2xl">{CATEGORY_ICONS[gear.category] ?? '📦'}</span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              {gear.brand && <p className="text-sm text-muted-foreground">{gear.brand}</p>}
+              <p className="text-xs text-muted-foreground">
+                {gear.category}{gear.type ? ` · ${gear.type}` : ''}
+              </p>
+              <p className="text-sm font-semibold text-foreground mt-1.5 tabular-nums">
+                {formatWeight(weightOz, 'oz', 1)} each
+              </p>
+            </div>
+          </div>
+
+          {/* Gear notes */}
+          {gear.notes && (
+            <div className="bg-secondary/50 rounded-lg px-3 py-2.5">
+              <p className="text-xs text-muted-foreground leading-relaxed">{gear.notes}</p>
+            </div>
+          )}
+
+          {/* Wear type */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Wear Type</p>
+            <div className="flex gap-2">
+              {(['base', 'worn', 'consumable'] as WearType[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setWearType(t)}
+                  className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-all ${
+                    wearType === t
+                      ? 'border-primary bg-accent text-accent-foreground'
+                      : 'border-border text-muted-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Quantity</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+                className="w-8 h-8 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 text-base"
+              >
+                −
+              </button>
+              <span className="text-xl font-semibold tabular-nums w-8 text-center">{quantity}</span>
+              <button
+                onClick={() => setQuantity(q => q + 1)}
+                className="w-8 h-8 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-base"
+              >
+                +
+              </button>
+              {quantity > 1 && (
+                <span className="text-sm text-muted-foreground tabular-nums ml-1">
+                  = {formatWeight(totalOz, 'oz', 1)} total
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center gap-2 px-5 py-4 border-t border-border">
+          <button
+            onClick={handleRemove}
+            aria-label="Remove from trip"
+            className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 text-sm btn-primary rounded-lg font-medium disabled:opacity-60"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

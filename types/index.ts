@@ -46,12 +46,34 @@ export interface Trip {
   name: string
   description: string | null
   trip_date: string | null
+  trip_date_end: string | null
   is_template: boolean
   cloned_from_id: string | null
   created_at: string
   updated_at: string
   // joined
   trip_items?: TripItem[]
+}
+
+export interface Checklist {
+  id: string
+  user_id: string
+  trip_id: string | null
+  name: string
+  created_at: string
+  updated_at: string
+  // joined
+  checklist_items?: ChecklistItem[]
+}
+
+export interface ChecklistItem {
+  id: string
+  checklist_id: string
+  name: string
+  brand: string | null
+  sort_order: number
+  checked: boolean
+  created_at: string
 }
 
 export interface TripItem {

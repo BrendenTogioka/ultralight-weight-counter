@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Mountain, LayoutDashboard, Package, Map,
-  Settings, LogOut, Scale, Menu, X
+  Settings, LogOut, Scale, Menu, X, ClipboardList
 } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/library', icon: Package, label: 'Gear Library' },
   { href: '/trips', icon: Map, label: 'Trips' },
+  { href: '/checklists', icon: ClipboardList, label: 'Checklists' },
   { href: '/settings', icon: Settings, label: 'Settings' },
 ]
 

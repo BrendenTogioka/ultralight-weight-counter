@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Calendar, Package } from 'lucide-react'
 import type { Trip } from '@/types'
-import { calculateWeightSummary, formatWeight, getWeightBarSegments } from '@/lib/calculations'
+import { calculateWeightSummary, formatWeight, formatWeightDisplay, getWeightBarSegments } from '@/lib/calculations'
 import { formatDate, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 
@@ -55,9 +55,16 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
       <div className="mb-3">
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-xs text-muted-foreground">Base weight</span>
-          <span className="text-sm font-semibold text-foreground">
-            {formatWeight(summary.base_oz, unit)}
-          </span>
+          <div className="text-right">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              {formatWeightDisplay(summary.base_oz, unit, 2).primary}
+            </span>
+            {formatWeightDisplay(summary.base_oz, unit, 2).secondary && (
+              <p className="text-xs text-muted-foreground tabular-nums leading-tight">
+                {formatWeightDisplay(summary.base_oz, unit, 2).secondary}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Weight bar */}
@@ -83,13 +90,13 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
           {summary.worn_oz > 0 && (
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full weight-bar-worn" />
-              <span className="text-xs text-muted-foreground">{formatWeight(summary.worn_oz, unit, 1)} worn</span>
+              <span className="text-xs text-muted-foreground">{formatWeightDisplay(summary.worn_oz, unit, 1).primary} worn</span>
             </div>
           )}
           {summary.consumable_oz > 0 && (
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full weight-bar-consumable" />
-              <span className="text-xs text-muted-foreground">{formatWeight(summary.consumable_oz, unit, 1)} consumable</span>
+              <span className="text-xs text-muted-foreground">{formatWeightDisplay(summary.consumable_oz, unit, 1).primary} consumable</span>
             </div>
           )}
         </div>
