@@ -3,16 +3,16 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Plus, Settings2, Download,
-  ChevronDown, ChevronUp, Pencil, Trash2
+  ArrowLeft, Plus, Download,
+  ChevronDown, ChevronUp, Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Trip, TripItem, GearType, WearType } from '@/types'
 import {
   calculateWeightSummary, calculateCategoryWeights,
-  formatWeight, formatLbsOz, getWeightBarSegments, getEffectiveWeightOz, toOz
+  formatWeight, formatWeightDisplay, getEffectiveWeightOz
 } from '@/lib/calculations'
-import { CATEGORY_ICONS, WEAR_TYPE_LABELS, cn } from '@/lib/utils'
+import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
@@ -125,19 +125,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     router.push('/dashboard')
   }
 
-  const wearTypeBadge = (type: WearType) => {
-    const colors = {
-      base: 'badge-base',
-      worn: 'badge-worn',
-      consumable: 'badge-consumable',
-    }
-    return (
-      <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', colors[type])}>
-        {WEAR_TYPE_LABELS[type]}
-      </span>
-    )
-  }
-
   return (
     <div className="px-4 sm:px-8 py-8 max-w-4xl mx-auto">
       {/* Header */}
@@ -155,20 +142,22 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             <p className="text-sm text-muted-foreground mt-0.5">{trip.description}</p>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-row items-center gap-2">
           <Link
             href={`/trips/${trip.id}/export`}
+            aria-label="Export trip"
             className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <Download className="h-4 w-4" />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </Link>
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center justify-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            aria-label="Add item to trip"
+            className="inline-flex items-center justify-center gap-2 btn-primary px-3 py-2 sm:px-4 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Add item
+            <span className="hidden sm:inline">Add item</span>
           </button>
         </div>
       </div>
@@ -210,9 +199,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                   <span className="text-xs text-muted-foreground">({catItems.length})</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-foreground tabular-nums">
-                    {formatWeight(weight_oz, unit)}
-                  </span>
+                  <div className="text-right">
+                    {(() => {
+                      const { primary, secondary } = formatWeightDisplay(weight_oz, unit, 2)
+                      return (
+                        <>
+                          <span className="text-sm font-semibold text-foreground tabular-nums">{primary}</span>
+                          {secondary && <p className="text-xs text-muted-foreground tabular-nums leading-tight">{secondary}</p>}
+                        </>
+                      )
+                    })()}
+                  </div>
                   {collapsed ? (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   ) : (
@@ -229,98 +226,104 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                     const effectiveOz = getEffectiveWeightOz(item)
                     const totalOz = effectiveOz * item.quantity
                     const isLast = idx === catItems.length - 1
+                    const { primary: weightPrimary, secondary: weightSecondary } = formatWeightDisplay(totalOz, unit, 2)
 
                     return (
                       <div
                         key={item.id}
                         className={cn(
-                          'flex items-center gap-3 px-4 py-3 group hover:bg-secondary/20 transition-colors',
+                          'px-4 py-3 group hover:bg-secondary/20 transition-colors',
                           !isLast && 'border-b border-border',
                           !item.included && 'opacity-50'
                         )}
                       >
-                        {/* Include toggle */}
-                        <button
-                          onClick={() => handleToggleIncluded(item)}
-                          aria-label={item.included ? `Exclude ${gear.name}` : `Include ${gear.name}`}
-                          className={cn(
-                            'w-5 h-5 rounded border-2 shrink-0 transition-colors flex items-center justify-center',
-                            item.included
-                              ? 'bg-primary border-primary'
-                              : 'border-border hover:border-primary/50'
-                          )}
-                        >
-                          {item.included && (
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Name */}
-                        <div className="flex-1 min-w-0">
-                          <p className={cn('text-sm font-medium', !item.included && 'line-through')}>
-                            {gear.name}
-                          </p>
-                          {gear.brand && (
-                            <p className="text-xs text-muted-foreground">{gear.brand}</p>
-                          )}
-                        </div>
-
-                        {/* Wear type */}
-                        <select
-                          value={item.wear_type}
-                          onChange={e => handleUpdateWearType(item, e.target.value as WearType)}
-                          aria-label={`Wear type for ${gear.name}`}
-                          className="text-xs border border-input rounded-lg px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="base">Base</option>
-                          <option value="worn">Worn</option>
-                          <option value="consumable">Consumable</option>
-                        </select>
-
-                        {/* Quantity */}
-                        <div className="flex items-center gap-1">
+                        {/* Row 1: checkbox + name + weight + remove */}
+                        <div className="flex items-center gap-3">
+                          {/* Include toggle */}
                           <button
-                            onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            aria-label={`Decrease quantity of ${gear.name}`}
-                            className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs disabled:opacity-40"
+                            onClick={() => handleToggleIncluded(item)}
+                            aria-label={item.included ? `Exclude ${gear.name}` : `Include ${gear.name}`}
+                            className={cn(
+                              'w-5 h-5 rounded border-2 shrink-0 transition-colors flex items-center justify-center',
+                              item.included
+                                ? 'bg-primary border-primary'
+                                : 'border-border hover:border-primary/50'
+                            )}
                           >
-                            −
+                            {item.included && (
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
                           </button>
-                          <span className="text-sm font-medium w-5 text-center tabular-nums" aria-label={`Quantity: ${item.quantity}`}>
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
-                            aria-label={`Increase quantity of ${gear.name}`}
-                            className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs"
-                          >
-                            +
-                          </button>
-                        </div>
 
-                        {/* Weight */}
-                        <div className="text-right w-28">
-                          <p className="text-sm font-semibold text-foreground tabular-nums">
-                            {formatWeight(totalOz, unit)}
-                          </p>
-                          {item.quantity > 1 && (
-                            <p className="text-xs text-muted-foreground tabular-nums">
-                              {formatWeight(effectiveOz, unit, 1)} ea
+                          {/* Name + brand */}
+                          <div className="flex-1 min-w-0">
+                            <p className={cn('text-sm font-medium leading-tight', !item.included && 'line-through')}>
+                              {gear.name}
                             </p>
-                          )}
+                            {gear.brand && (
+                              <p className="text-xs text-muted-foreground leading-tight">{gear.brand}</p>
+                            )}
+                          </div>
+
+                          {/* Weight */}
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold text-foreground tabular-nums">{weightPrimary}</p>
+                            {weightSecondary && (
+                              <p className="text-xs text-muted-foreground tabular-nums leading-tight">{weightSecondary}</p>
+                            )}
+                            {item.quantity > 1 && (
+                              <p className="text-xs text-muted-foreground tabular-nums leading-tight">
+                                {formatWeightDisplay(effectiveOz, unit, 1).primary} ea
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Remove — always visible on mobile, hover-only on desktop */}
+                          <button
+                            onClick={() => handleRemoveItem(item)}
+                            aria-label={`Remove ${gear.name} from trip`}
+                            className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
 
-                        {/* Remove */}
-                        <button
-                          onClick={() => handleRemoveItem(item)}
-                          aria-label={`Remove ${gear.name} from trip`}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {/* Row 2: wear type + quantity */}
+                        <div className="flex items-center gap-2 mt-1.5 pl-8">
+                          <select
+                            value={item.wear_type}
+                            onChange={e => handleUpdateWearType(item, e.target.value as WearType)}
+                            aria-label={`Wear type for ${gear.name}`}
+                            className="text-xs border border-input rounded-lg px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="base">Base</option>
+                            <option value="worn">Worn</option>
+                            <option value="consumable">Consumable</option>
+                          </select>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              aria-label={`Decrease quantity of ${gear.name}`}
+                              className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs disabled:opacity-40"
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-medium w-5 text-center tabular-nums" aria-label={`Quantity: ${item.quantity}`}>
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
+                              aria-label={`Increase quantity of ${gear.name}`}
+                              className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )
                   })}

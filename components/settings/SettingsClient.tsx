@@ -8,7 +8,7 @@ import { passwordSchema } from '@/lib/validation'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { toast } from 'sonner'
-import { Loader2, Scale, User as UserIcon, Lock, Moon, Sun } from 'lucide-react'
+import { Loader2, Scale, User as UserIcon, Lock, Moon, Sun, LayoutGrid, List } from 'lucide-react'
 
 interface Props {
   settings: UserSettings | null
@@ -20,6 +20,12 @@ export function SettingsClient({ settings, user }: Props) {
   const { theme, setTheme } = useTheme()
   const [defaultUnit, setDefaultUnit] = useState<WeightUnit>(settings?.default_unit ?? 'oz')
   const [savingUnit, setSavingUnit] = useState(false)
+  const [defaultView, setDefaultView] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('gear_view') as 'list' | 'grid') ?? 'list'
+    }
+    return 'list'
+  })
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -143,6 +149,40 @@ export function SettingsClient({ settings, user }: Props) {
               >
                 {t === 'light' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Default gear view */}
+      <section className="mb-8">
+        <SectionHeader icon={LayoutGrid} title="Default Gear View" />
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose whether your gear library opens in list or grid view by default.
+          </p>
+          <div className="flex items-center gap-3">
+            {([
+              { value: 'list' as const, icon: List, label: 'List' },
+              { value: 'grid' as const, icon: LayoutGrid, label: 'Grid' },
+            ]).map(({ value, icon: Icon, label }) => (
+              <button
+                key={value}
+                onClick={() => {
+                  setDefaultView(value)
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('gear_view', value)
+                  }
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  defaultView === value
+                    ? 'border-primary bg-accent text-accent-foreground'
+                    : 'border-border text-muted-foreground hover:border-border/80 hover:bg-secondary/50'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
               </button>
             ))}
           </div>

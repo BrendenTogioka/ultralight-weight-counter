@@ -35,7 +35,7 @@ export function GearItemRow({ item, isLast, onEdit, onDelete }: Props) {
   return (
     <div
       className={cn(
-        'grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-secondary/30 transition-colors group',
+        'grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center px-4 py-3 hover:bg-secondary/30 transition-colors group',
         !isLast && 'border-b border-border'
       )}
     >
@@ -48,21 +48,25 @@ export function GearItemRow({ item, isLast, onEdit, onDelete }: Props) {
         )}
       </div>
 
-      {/* Name + notes */}
+      {/* Name + notes (+ brand/category on mobile) */}
       <div className="min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+        {/* Show brand + category inline on mobile */}
+        <p className="text-xs text-muted-foreground truncate sm:hidden">
+          {[item.brand, item.category].filter(Boolean).join(' · ')}
+        </p>
         {item.notes && (
-          <p className="text-xs text-muted-foreground truncate">{item.notes}</p>
+          <p className="text-xs text-muted-foreground truncate hidden sm:block">{item.notes}</p>
         )}
       </div>
 
-      {/* Brand */}
-      <span className="text-sm text-muted-foreground w-28 truncate text-right">
+      {/* Brand — desktop only */}
+      <span className="hidden sm:block text-sm text-muted-foreground w-28 truncate text-right">
         {item.brand ?? '—'}
       </span>
 
-      {/* Category + type */}
-      <div className="text-right w-28">
+      {/* Category + type — desktop only */}
+      <div className="hidden sm:block text-right w-28">
         <span className="text-sm text-muted-foreground">{item.category}</span>
         {item.type && (
           <p className="text-xs text-muted-foreground/70">{item.type}</p>
@@ -70,20 +74,22 @@ export function GearItemRow({ item, isLast, onEdit, onDelete }: Props) {
       </div>
 
       {/* Weight */}
-      <span className="text-sm font-medium text-foreground w-20 text-right tabular-nums">
+      <span className="text-sm font-medium text-foreground w-16 sm:w-20 text-right tabular-nums">
         {formatWeight(weightOz, unit)}
       </span>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity w-16 justify-end">
+      {/* Actions — always visible on mobile, hover-only on desktop */}
+      <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity w-14 sm:w-16 justify-end">
         <button
           onClick={onEdit}
+          aria-label={`Edit ${item.name}`}
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={handleDelete}
+          aria-label={`Delete ${item.name}`}
           className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />

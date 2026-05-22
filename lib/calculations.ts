@@ -44,6 +44,28 @@ export function formatLbsOz(oz: number): string {
   return remaining < 0.1 ? `${lbs} lb` : `${lbs} lb ${remaining.toFixed(1)} oz`
 }
 
+/** Returns a primary + optional secondary weight string.
+ *  When unit='oz' and weight >= 16oz: primary = "2.24 lb", secondary = "35.8 oz"
+ *  When unit='oz' and weight < 16oz: primary = "12.5 oz", secondary = null
+ *  When unit='g': primary = "500 g", secondary = null
+ */
+export function formatWeightDisplay(
+  oz: number,
+  unit: WeightUnit,
+  decimals = 2
+): { primary: string; secondary: string | null } {
+  if (unit === 'g') {
+    return { primary: `${ozToG(oz).toFixed(0)} g`, secondary: null }
+  }
+  if (oz >= 16) {
+    return {
+      primary: `${(oz / 16).toFixed(decimals)} lb`,
+      secondary: `${oz.toFixed(1)} oz`,
+    }
+  }
+  return { primary: `${oz.toFixed(1)} oz`, secondary: null }
+}
+
 // ============================================================
 // TRIP WEIGHT CALCULATIONS
 // ============================================================

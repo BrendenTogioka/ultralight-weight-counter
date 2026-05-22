@@ -94,6 +94,13 @@
     scroll-behavior: smooth;
   }
 
+  /* Prevent iOS auto-zoom on input focus — iOS zooms when font-size < 16px */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
   /* Focus styles */
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;

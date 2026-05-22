@@ -205,6 +205,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
               className={inputCls}
               placeholder="e.g. John Muir Trail 2025" maxLength={100}
               autoFocus
+              autoCapitalize="words"
             />
           </div>
 
@@ -215,6 +216,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
               onChange={e => setDescription(e.target.value)}
               className={inputCls}
               placeholder="Optional description" maxLength={300}
+              autoCapitalize="sentences"
             />
           </div>
 

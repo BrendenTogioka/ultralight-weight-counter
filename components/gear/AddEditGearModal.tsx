@@ -214,6 +214,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
               className={inputCls}
               placeholder="e.g. Zpacks Arc Haul Ultra" maxLength={100}
+              autoCapitalize="words"
             />
           </Field>
 
@@ -224,6 +225,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
               onChange={e => setForm(p => ({ ...p, brand: e.target.value }))}
               className={inputCls}
               placeholder="e.g. Zpacks" maxLength={80}
+              autoCapitalize="words"
             />
           </Field>
 
@@ -288,9 +290,9 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
             <div className="flex gap-2">
               <input
                 required
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
                 value={form.weight}
                 onChange={e => setForm(p => ({ ...p, weight: e.target.value }))}
                 className={inputCls}

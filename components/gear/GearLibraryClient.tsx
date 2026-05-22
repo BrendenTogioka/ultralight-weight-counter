@@ -21,7 +21,12 @@ interface Props {
 export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
   const { unit } = useUnit()
   const [items, setItems] = useState<GearItem[]>(initialItems)
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('gear_view') as ViewMode) ?? 'list'
+    }
+    return 'list'
+  })
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<GearItem | null>(null)
   const [filters, setFilters] = useState<LibraryFilters>({
@@ -93,6 +98,13 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
 
     return result
   }, [items, filters])
+
+  function changeViewMode(mode: ViewMode) {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gear_view', mode)
+    }
+  }
 
   function toggleSort(field: SortField) {
     setFilters(prev => ({
@@ -201,7 +213,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
         {/* View mode */}
         <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => changeViewMode('list')}
             aria-label="List view"
             aria-pressed={viewMode === 'list'}
             className={cn(
@@ -212,7 +224,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
             <List className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setViewMode('grid')}
+            onClick={() => changeViewMode('grid')}
             aria-label="Grid view"
             aria-pressed={viewMode === 'grid'}
             className={cn(
@@ -257,21 +269,21 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
       ) : (
         <div className="border border-border rounded-xl overflow-hidden">
           {/* List header */}
-          <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 sm:gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
             <div className="w-8" />
             <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('name')}>
               Name {filters.sortField === 'name' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <button className="hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
+            <button className="hidden sm:block hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
               Brand {filters.sortField === 'brand' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <button className="hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
+            <button className="hidden sm:block hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
               Category {filters.sortField === 'category' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
             <button className="hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
               Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <div className="w-16" />
+            <div className="w-14 sm:w-16" />
           </div>
           {filteredItems.map((item, idx) => (
             <GearItemRow

@@ -1,7 +1,7 @@
 'use client'
 
 import type { WeightSummary, WeightUnit } from '@/types'
-import { formatWeight, formatLbsOz, getWeightBarSegments } from '@/lib/calculations'
+import { formatWeightDisplay, getWeightBarSegments } from '@/lib/calculations'
 
 interface Props {
   summary: WeightSummary
@@ -79,10 +79,11 @@ export function WeightSummaryBar({ summary, unit }: Props) {
 }
 
 function WeightStat({
-  label, oz, unit, color, isTotal,
+  label, oz, unit, color,
 }: {
   label: string; oz: number; unit: WeightUnit; color?: string; isTotal?: boolean
 }) {
+  const { primary, secondary } = formatWeightDisplay(oz, unit, 2)
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -91,11 +92,11 @@ function WeightStat({
           {label}
         </span>
       </div>
-      <p className={`text-2xl font-semibold tracking-tight tabular-nums ${isTotal ? 'text-foreground' : 'text-foreground'}`}>
-        {formatWeight(oz, unit, 1)}
+      <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+        {primary}
       </p>
-      {unit === 'oz' && oz >= 16 && (
-        <p className="text-xs text-muted-foreground mt-0.5">{formatLbsOz(oz)}</p>
+      {secondary && (
+        <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{secondary}</p>
       )}
     </div>
   )
