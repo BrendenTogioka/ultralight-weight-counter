@@ -60,6 +60,7 @@ export interface Checklist {
   user_id: string
   trip_id: string | null
   name: string
+  notes: string | null
   created_at: string
   updated_at: string
   // joined
@@ -86,6 +87,7 @@ export interface TripItem {
   override_weight_oz: number | null
   included: boolean
   notes: string | null
+  sort_order: number
   created_at: string
   updated_at: string
   // joined

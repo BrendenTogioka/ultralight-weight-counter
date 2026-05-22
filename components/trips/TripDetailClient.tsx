@@ -4,13 +4,25 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Plus, Download, Pencil, Trash2,
-  ChevronDown, ChevronUp, ClipboardList
+  ChevronDown, ChevronUp, ClipboardList,
+  MoreHorizontal, Copy, GripVertical,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { Trip, TripItem, GearType, WearType } from '@/types'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor,
+  KeyboardSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext, sortableKeyboardCoordinates,
+  useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import type { Trip, TripItem, GearType, WearType, WeightUnit } from '@/types'
 import {
   calculateWeightSummary, calculateCategoryWeights,
-  formatWeight, formatWeightDisplay, getEffectiveWeightOz
+  formatWeight, formatWeightDisplay, getEffectiveWeightOz,
 } from '@/lib/calculations'
 import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
@@ -29,6 +41,97 @@ interface Props {
   userId: string
 }
 
+// ─── Sortable item row ────────────────────────────────────────────────────────
+
+interface SortableItemProps {
+  item: TripItem
+  isLast: boolean
+  unit: WeightUnit
+  onSelect: () => void
+  onRemove: () => void
+}
+
+function SortableTripItem({ item, isLast, unit, onSelect, onRemove }: SortableItemProps) {
+  const {
+    attributes, listeners, setNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id: item.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const gear = item.gear_item!
+  const effectiveOz = getEffectiveWeightOz(item)
+  const totalOz = effectiveOz * item.quantity
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'px-4 py-3 group hover:bg-secondary/20 transition-colors',
+        !isLast && 'border-b border-border',
+        isDragging && 'opacity-50 bg-secondary/30 relative z-10',
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {/* Drag handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+          className="shrink-0 touch-none text-muted-foreground/30 hover:text-muted-foreground/70 cursor-grab active:cursor-grabbing transition-colors"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        {/* Name + brand */}
+        <button onClick={onSelect} className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-medium leading-tight hover:text-primary transition-colors">
+            {gear.name}
+          </p>
+          {gear.brand && (
+            <p className="text-xs text-muted-foreground leading-tight">{gear.brand}</p>
+          )}
+        </button>
+
+        {/* Weight */}
+        <div className="text-right shrink-0">
+          <p className="text-sm font-semibold text-foreground tabular-nums">
+            {formatWeight(totalOz, unit, 1)}
+          </p>
+          {item.quantity > 1 && (
+            <p className="text-xs text-muted-foreground tabular-nums leading-tight">
+              {formatWeight(effectiveOz, unit, 1)} ea
+            </p>
+          )}
+        </div>
+
+        {/* Remove */}
+        <button
+          onClick={onRemove}
+          aria-label={`Remove ${gear.name} from trip`}
+          className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Wear type + qty badge */}
+      <div className="mt-1 pl-6">
+        <span className="text-xs text-muted-foreground capitalize">{item.wear_type}</span>
+        {item.quantity > 1 && (
+          <span className="text-xs text-muted-foreground"> · ×{item.quantity}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props) {
   const router = useRouter()
   const { unit } = useUnit()
@@ -39,13 +142,18 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [wearFilter, setWearFilter] = useState<WearFilter>('all')
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
   const items = (trip.trip_items ?? []) as TripItem[]
 
-  // Summary always reflects all items; list respects filter
   const summary = useMemo(() => calculateWeightSummary(items), [items])
   const filteredItems = useMemo(() =>
     wearFilter === 'all' ? items : items.filter(i => i.wear_type === wearFilter),
-    [items, wearFilter]
+    [items, wearFilter],
   )
   const categoryWeights = useMemo(() => calculateCategoryWeights(filteredItems), [filteredItems])
 
@@ -57,25 +165,33 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     })
   }
 
-  async function handleUpdateWearType(item: TripItem, wear_type: WearType) {
-    const supabase = createClient()
-    const { error } = await supabase.from('trip_items').update({ wear_type }).eq('id', item.id)
-    if (error) return toast.error('Failed to update item')
-    setTrip(prev => ({
-      ...prev,
-      trip_items: prev.trip_items?.map(i => i.id === item.id ? { ...i, wear_type } : i),
-    }))
-  }
+  async function handleDragEnd(catItems: TripItem[], event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-  async function handleUpdateQuantity(item: TripItem, quantity: number) {
-    if (quantity < 1) return
-    const supabase = createClient()
-    const { error } = await supabase.from('trip_items').update({ quantity }).eq('id', item.id)
-    if (error) return toast.error('Failed to update quantity')
-    setTrip(prev => ({
-      ...prev,
-      trip_items: prev.trip_items?.map(i => i.id === item.id ? { ...i, quantity } : i),
+    const oldIndex = catItems.findIndex(i => i.id === active.id)
+    const newIndex = catItems.findIndex(i => i.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(catItems, oldIndex, newIndex).map((item, idx) => ({
+      ...item,
+      sort_order: idx,
     }))
+
+    // Optimistic update
+    setTrip(prev => {
+      const catIds = new Set(catItems.map(i => i.id))
+      const others = (prev.trip_items ?? []).filter(i => !catIds.has(i.id))
+      return { ...prev, trip_items: [...others, ...reordered] }
+    })
+
+    // Persist
+    const supabase = createClient()
+    await Promise.all(
+      reordered.map(item =>
+        supabase.from('trip_items').update({ sort_order: item.sort_order }).eq('id', item.id),
+      ),
+    )
   }
 
   async function handleRemoveItem(itemId: string) {
@@ -93,10 +209,15 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   }
 
   function handleItemAdded(newItem: TripItem) {
+    // Sort new item after existing ones by giving it a high sort_order
+    const newSortOrder = items.length
     setTrip(prev => ({
       ...prev,
-      trip_items: [...(prev.trip_items ?? []), newItem],
+      trip_items: [...(prev.trip_items ?? []), { ...newItem, sort_order: newSortOrder }],
     }))
+    // Persist the sort_order for the new item
+    const supabase = createClient()
+    supabase.from('trip_items').update({ sort_order: newSortOrder }).eq('id', newItem.id)
   }
 
   async function handleDeleteTrip() {
@@ -108,6 +229,45 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     router.push('/dashboard')
   }
 
+  async function handleDuplicateTrip() {
+    const supabase = createClient()
+    const { data: newTrip, error } = await supabase
+      .from('trips')
+      .insert({
+        user_id: userId,
+        name: `${trip.name} (Copy)`,
+        description: trip.description,
+        trip_date: trip.trip_date,
+        trip_date_end: trip.trip_date_end,
+        is_template: false,
+        cloned_from_id: trip.id,
+      })
+      .select()
+      .single()
+
+    if (error || !newTrip) { toast.error('Failed to duplicate trip'); return }
+
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from('trip_items').insert(
+        items.map(item => ({
+          trip_id: newTrip.id,
+          gear_item_id: item.gear_item_id,
+          user_id: userId,
+          quantity: item.quantity,
+          wear_type: item.wear_type,
+          override_weight_oz: item.override_weight_oz,
+          included: item.included,
+          notes: item.notes,
+          sort_order: item.sort_order ?? 0,
+        })),
+      )
+      if (itemsError) toast.error('Trip created but items failed to copy')
+    }
+
+    toast.success('Trip duplicated!')
+    router.push(`/trips/${newTrip.id}`)
+  }
+
   async function handleCreateChecklist() {
     const supabase = createClient()
     const { data: checklist, error } = await supabase
@@ -116,10 +276,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       .select()
       .single()
 
-    if (error) {
-      toast.error('Failed to create checklist. Make sure you have run the migration SQL.')
-      return
-    }
+    if (error) { toast.error('Failed to create checklist'); return }
 
     const checklistItems = items.map((item, idx) => ({
       checklist_id: checklist.id,
@@ -134,7 +291,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     router.push(`/checklists/${checklist.id}`)
   }
 
-  // Format date range for display
   const dateLabel = trip.trip_date
     ? trip.trip_date_end && trip.trip_date_end !== trip.trip_date
       ? `${formatTripDate(trip.trip_date)} – ${formatTripDate(trip.trip_date_end)}`
@@ -143,7 +299,8 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
 
   return (
     <div className="px-4 sm:px-8 py-8 max-w-4xl mx-auto">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex items-start justify-between mb-6">
         <div className="min-w-0 flex-1 pr-4">
           <Link
@@ -171,24 +328,27 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           )}
         </div>
 
-        <div className="flex flex-row items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Desktop-only: Checklist + Export */}
           <button
             onClick={handleCreateChecklist}
             aria-label="Create packing checklist"
             title="Create checklist"
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="hidden sm:inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Checklist</span>
+            Checklist
           </button>
           <Link
             href={`/trips/${trip.id}/export`}
             aria-label="Export trip"
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="hidden sm:inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
+            Export
           </Link>
+
+          {/* Always: Add item */}
           <button
             onClick={() => setShowAddModal(true)}
             aria-label="Add item to trip"
@@ -197,6 +357,61 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add item</span>
           </button>
+
+          {/* Always: three-dot menu */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                aria-label="More options"
+                className="inline-flex items-center justify-center w-9 h-9 border border-border rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={6}
+                className="z-50 min-w-48 bg-card border border-border rounded-xl shadow-xl p-1"
+              >
+                {/* Mobile-only items */}
+                <DropdownMenu.Item
+                  onSelect={handleCreateChecklist}
+                  className="sm:hidden flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
+                >
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  Create checklist
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild className="sm:hidden">
+                  <Link
+                    href={`/trips/${trip.id}/export`}
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary outline-none select-none"
+                  >
+                    <Download className="h-4 w-4 text-muted-foreground" />
+                    Export
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="sm:hidden h-px bg-border my-1 -mx-1" />
+
+                {/* Always visible */}
+                <DropdownMenu.Item
+                  onSelect={handleDuplicateTrip}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
+                >
+                  <Copy className="h-4 w-4 text-muted-foreground" />
+                  Duplicate trip
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="h-px bg-border my-1 -mx-1" />
+                <DropdownMenu.Item
+                  onSelect={handleDeleteTrip}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-destructive rounded-lg hover:bg-destructive/10 cursor-pointer outline-none select-none"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete trip
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       </div>
 
@@ -214,7 +429,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                 'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                 wearFilter === f
                   ? 'border-primary bg-accent text-accent-foreground'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50',
               )}
             >
               {f === 'all' ? 'All items' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -223,7 +438,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         </div>
       )}
 
-      {/* Category groups */}
+      {/* ── Category groups ── */}
       <div className="mt-4 flex flex-col gap-4">
         {categoryWeights.length === 0 && (
           <div className="border border-dashed border-border rounded-2xl p-16 text-center">
@@ -280,93 +495,41 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                 </div>
               </button>
 
-              {/* Items */}
+              {/* Sortable items */}
               {!collapsed && (
-                <div>
-                  {catItems.map((item, idx) => {
-                    const gear = item.gear_item!
-                    const effectiveOz = getEffectiveWeightOz(item)
-                    const totalOz = effectiveOz * item.quantity
-                    const isLast = idx === catItems.length - 1
-
-                    return (
-                      <div
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={event => handleDragEnd(catItems, event)}
+                >
+                  <SortableContext
+                    items={catItems.map(i => i.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {catItems.map((item, idx) => (
+                      <SortableTripItem
                         key={item.id}
-                        className={cn(
-                          'px-4 py-3 group hover:bg-secondary/20 transition-colors',
-                          !isLast && 'border-b border-border'
-                        )}
-                      >
-                        {/* Row 1: name (clickable) + weight + remove */}
-                        <div className="flex items-center gap-3">
-                          {/* Name + brand — click to open detail modal */}
-                          <button
-                            onClick={() => setSelectedItem(item)}
-                            className="flex-1 min-w-0 text-left"
-                          >
-                            <p className="text-sm font-medium leading-tight hover:text-primary transition-colors">
-                              {gear.name}
-                            </p>
-                            {gear.brand && (
-                              <p className="text-xs text-muted-foreground leading-tight">{gear.brand}</p>
-                            )}
-                          </button>
-
-                          {/* Weight — oz only for individual items */}
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-semibold text-foreground tabular-nums">
-                              {formatWeight(totalOz, unit, 1)}
-                            </p>
-                            {item.quantity > 1 && (
-                              <p className="text-xs text-muted-foreground tabular-nums leading-tight">
-                                {formatWeight(effectiveOz, unit, 1)} ea
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Remove */}
-                          <button
-                            onClick={() => {
-                              if (!confirm(`Remove "${gear.name}" from trip?`)) return
-                              const supabase = createClient()
-                              supabase.from('trip_items').delete().eq('id', item.id).then(({ error }) => {
-                                if (error) return toast.error('Failed to remove item')
-                                handleRemoveItem(item.id)
-                                toast.success('Item removed')
-                              })
-                            }}
-                            aria-label={`Remove ${gear.name} from trip`}
-                            className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Wear type badge */}
-                        <div className="mt-1">
-                          <span className="text-xs text-muted-foreground capitalize">{item.wear_type}</span>
-                          {item.quantity > 1 && (
-                            <span className="text-xs text-muted-foreground"> · ×{item.quantity}</span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                        item={item}
+                        isLast={idx === catItems.length - 1}
+                        unit={unit}
+                        onSelect={() => setSelectedItem(item)}
+                        onRemove={() => {
+                          if (!confirm(`Remove "${item.gear_item?.name}" from trip?`)) return
+                          const supabase = createClient()
+                          supabase.from('trip_items').delete().eq('id', item.id).then(({ error }) => {
+                            if (error) return toast.error('Failed to remove item')
+                            handleRemoveItem(item.id)
+                            toast.success('Item removed')
+                          })
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           )
         })}
-      </div>
-
-      {/* Delete trip */}
-      <div className="mt-10 pt-6 border-t border-border">
-        <button
-          onClick={handleDeleteTrip}
-          className="text-sm text-muted-foreground hover:text-destructive transition-colors"
-        >
-          Delete this trip
-        </button>
       </div>
 
       {/* Modals */}

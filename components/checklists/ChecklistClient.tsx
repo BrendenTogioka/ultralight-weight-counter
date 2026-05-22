@@ -19,6 +19,7 @@ export function ChecklistClient({ checklist: initial }: Props) {
     (initial.checklist_items ?? []) as ChecklistItem[]
   )
   const [name] = useState(initial.name)
+  const [notes, setNotes] = useState(initial.notes ?? '')
 
   const checked = items.filter(i => i.checked).length
   const total = items.length
@@ -44,6 +45,16 @@ export function ChecklistClient({ checklist: initial }: Props) {
     if (error) { toast.error('Failed to reset'); return }
     setItems(prev => prev.map(i => ({ ...i, checked: false })))
     toast.success('All items unchecked')
+  }
+
+  async function handleSaveNotes(value: string) {
+    if (value === (initial.notes ?? '')) return
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('checklists')
+      .update({ notes: value || null })
+      .eq('id', initial.id)
+    if (error) toast.error('Failed to save notes')
   }
 
   async function handleDelete() {
@@ -152,8 +163,23 @@ export function ChecklistClient({ checklist: initial }: Props) {
         </div>
       )}
 
+      {/* Notes */}
+      <div className="mt-6">
+        <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          Trip Notes
+        </label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          onBlur={e => handleSaveNotes(e.target.value)}
+          placeholder="Add notes, reminders, or anything else for this trip…"
+          rows={4}
+          className="w-full px-3.5 py-3 text-sm border border-input rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-ring transition-shadow resize-none placeholder:text-muted-foreground/50"
+        />
+      </div>
+
       {/* Delete */}
-      <div className="mt-10 pt-6 border-t border-border flex items-center justify-between">
+      <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
         <button
           onClick={handleDelete}
           className="text-sm text-muted-foreground hover:text-destructive transition-colors inline-flex items-center gap-1.5"

@@ -119,6 +119,15 @@ export function calculateCategoryWeights(items: TripItem[]): CategoryWeight[] {
     }
   }
 
+  // Within each category, sort items by sort_order then by created_at
+  for (const entry of map.values()) {
+    entry.items.sort((a, b) => {
+      const orderDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      if (orderDiff !== 0) return orderDiff
+      return a.created_at < b.created_at ? -1 : 1
+    })
+  }
+
   return Array.from(map.values()).sort((a, b) => b.weight_oz - a.weight_oz)
 }
 
