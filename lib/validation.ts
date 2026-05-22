@@ -16,7 +16,7 @@ export const gearItemSchema = z.object({
     .max(80, 'Brand must be 80 characters or less')
     .transform(s => s.trim())
     .optional(),
-  category: z.enum(GEAR_CATEGORIES as [string, ...string[]], {
+  category: z.enum([...GEAR_CATEGORIES] as [string, ...string[]], {
     errorMap: () => ({ message: 'Please select a valid category' }),
   }),
   type: z
