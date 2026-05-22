@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -21,13 +22,9 @@ const NAV_ITEMS = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ]
 
-function SidebarContent({
-  user,
-  onNavigate,
-}: {
-  user: User
-  onNavigate?: () => void
-}) {
+// ─── Nav links + footer (no logo — each context supplies its own header) ──────
+
+function SidebarNav({ user, onNavigate }: { user: User; onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const { unit, toggleUnit } = useUnit()
@@ -41,19 +38,6 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-border/60">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2"
-          onClick={onNavigate}
-        >
-          <Mountain className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-foreground tracking-tight text-sm">Ultralight</span>
-        </Link>
-      </div>
-
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
@@ -76,7 +60,6 @@ function SidebarContent({
         })}
       </nav>
 
-      {/* Unit toggle + sign out */}
       <div className="px-3 py-4 border-t border-border/60 flex flex-col gap-1">
         <button
           onClick={toggleUnit}
@@ -103,22 +86,36 @@ function SidebarContent({
   )
 }
 
+// ─── Logo mark ────────────────────────────────────────────────────────────────
+
+function Logo({ onClick }: { onClick?: () => void }) {
+  return (
+    <Link href="/dashboard" onClick={onClick} className="flex items-center gap-2">
+      <Mountain className="h-5 w-5 text-primary" />
+      <span className="font-semibold text-foreground tracking-tight text-sm">Ultralight</span>
+    </Link>
+  )
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+
 export function AppSidebar({ user }: { user: User }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const close = () => setMobileOpen(false)
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex w-56 border-r border-border flex-col bg-card shrink-0">
-        <SidebarContent user={user} />
+        <div className="px-5 py-5 border-b border-border/60">
+          <Logo />
+        </div>
+        <SidebarNav user={user} />
       </aside>
 
-      {/* Mobile top bar */}
+      {/* ── Mobile top bar ── */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <Mountain className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-foreground tracking-tight text-sm">Ultralight</span>
-        </Link>
+        <Logo />
         <button
           onClick={() => setMobileOpen(true)}
           className="p-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -128,35 +125,50 @@ export function AppSidebar({ user }: { user: User }) {
         </button>
       </div>
 
-      {/* Mobile spacer so content isn't under the top bar */}
+      {/* Mobile height spacer */}
       <div className="md:hidden h-14 shrink-0" />
 
-      {/* Mobile drawer overlay */}
-      {mobileOpen && (
-        <>
-          <div
-            className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="md:hidden fixed top-0 left-0 bottom-0 z-50 w-64 bg-card border-r border-border flex flex-col shadow-xl animate-fade-in">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <Mountain className="h-5 w-5 text-primary" />
-                <span className="font-semibold text-foreground tracking-tight text-sm">Ultralight</span>
-              </Link>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <SidebarContent user={user} onNavigate={() => setMobileOpen(false)} />
-            </div>
-          </aside>
-        </>
-      )}
+      {/* ── Mobile drawer (slides from right) ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+              onClick={close}
+            />
+
+            {/* Drawer — right side */}
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="md:hidden fixed top-0 right-0 bottom-0 z-50 w-64 bg-card border-l border-border flex flex-col shadow-xl"
+            >
+              {/* Drawer header — single logo + close */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+                <Logo onClick={close} />
+                <button
+                  onClick={close}
+                  aria-label="Close menu"
+                  className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                <SidebarNav user={user} onNavigate={close} />
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }

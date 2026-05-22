@@ -1,65 +1,27 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, Mountain, ArrowUpDown } from 'lucide-react'
+import { Plus, Mountain, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { TripCard } from '@/components/trips/TripCard'
 import { TripChartsSection } from '@/components/dashboard/TripChartsSection'
 import type { Trip } from '@/types'
-import { calculateWeightSummary } from '@/lib/calculations'
-import { cn } from '@/lib/utils'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
-type SortKey = 'updated_at' | 'created_at' | 'name' | 'weight'
-type SortDir = 'asc' | 'desc'
+const RECENT_LIMIT = 6
 
 interface Props {
   trips: Trip[]
 }
 
 export function DashboardClient({ trips }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('updated_at')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-
   const activTrips = useMemo(() => trips.filter(t => !t.is_template), [trips])
   const templates = useMemo(() => trips.filter(t => t.is_template), [trips])
 
-  function getTripWeight(trip: Trip): number {
-    return calculateWeightSummary((trip.trip_items ?? []) as any).base_oz
-  }
-
-  const sortedTrips = useMemo(() => {
-    return [...activTrips].sort((a, b) => {
-      let valA: string | number = 0
-      let valB: string | number = 0
-      switch (sortKey) {
-        case 'updated_at': valA = a.updated_at; valB = b.updated_at; break
-        case 'created_at': valA = a.created_at; valB = b.created_at; break
-        case 'name': valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); break
-        case 'weight': valA = getTripWeight(a); valB = getTripWeight(b); break
-      }
-      if (valA < valB) return sortDir === 'asc' ? -1 : 1
-      if (valA > valB) return sortDir === 'asc' ? 1 : -1
-      return 0
-    })
-  }, [activTrips, sortKey, sortDir])
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDir('desc')
-    }
-  }
-
-  const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-    { key: 'updated_at', label: 'Recent' },
-    { key: 'created_at', label: 'Created' },
-    { key: 'name', label: 'Name' },
-    { key: 'weight', label: 'Weight' },
-  ]
+  // Most recent first (server already orders by updated_at desc, just slice)
+  const recentTrips = useMemo(() => activTrips.slice(0, RECENT_LIMIT), [activTrips])
+  const hasMore = activTrips.length > RECENT_LIMIT
 
   return (
     <motion.div
@@ -85,31 +47,22 @@ export function DashboardClient({ trips }: Props) {
         </Link>
       </div>
 
-      {/* Active trips */}
+      {/* Recent trips */}
       <section>
-        {/* Sort bar */}
-        {activTrips.length > 1 && (
-          <div className="flex items-center gap-2 mb-4">
-            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {SORT_OPTIONS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => handleSort(key)}
-                  className={cn(
-                    'px-3 py-1 rounded-full text-xs font-medium border transition-all',
-                    sortKey === key
-                      ? 'border-primary bg-accent text-accent-foreground'
-                      : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                  )}
-                >
-                  {label}
-                  {sortKey === key && (
-                    <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
-              ))}
-            </div>
+        {activTrips.length > 0 && (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              Recent trips
+            </h2>
+            {hasMore && (
+              <Link
+                href="/trips"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+              >
+                View all
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
           </div>
         )}
 
@@ -127,18 +80,32 @@ export function DashboardClient({ trips }: Props) {
             </Link>
           </div>
         ) : (
-          <motion.div
-            variants={staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            {sortedTrips.map(trip => (
-              <motion.div key={trip.id} variants={staggerItem}>
-                <TripCard trip={trip} />
-              </motion.div>
-            ))}
-          </motion.div>
+          <>
+            <motion.div
+              variants={staggerContainer}
+              initial="initial"
+              animate="animate"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              {recentTrips.map(trip => (
+                <motion.div key={trip.id} variants={staggerItem}>
+                  <TripCard trip={trip} />
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {hasMore && (
+              <div className="mt-4 text-center">
+                <Link
+                  href="/trips"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  View all {activTrips.length} trips
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </section>
 
