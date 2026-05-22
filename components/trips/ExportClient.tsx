@@ -199,7 +199,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
   }
 
   return (
-    <div className="px-8 py-8 max-w-3xl mx-auto">
+    <div className="px-4 sm:px-8 py-8 max-w-3xl mx-auto">
       {/* Back */}
       <Link
         href={`/trips/${trip.id}`}

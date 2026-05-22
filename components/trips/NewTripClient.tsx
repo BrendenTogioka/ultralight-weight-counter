@@ -101,7 +101,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
   }
 
   return (
-    <div className="px-8 py-8 max-w-2xl mx-auto">
+    <div className="px-4 sm:px-8 py-8 max-w-2xl mx-auto">
       {/* Back */}
       <Link
         href="/dashboard"

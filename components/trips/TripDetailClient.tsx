@@ -139,7 +139,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   }
 
   return (
-    <div className="px-8 py-8 max-w-4xl mx-auto">
+    <div className="px-4 sm:px-8 py-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -201,6 +201,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
               {/* Category header */}
               <button
                 onClick={() => toggleCategory(category)}
+                aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${category}`}
                 className="w-full flex items-center justify-between px-4 py-3 bg-secondary/30 hover:bg-secondary/60 transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -241,6 +242,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                         {/* Include toggle */}
                         <button
                           onClick={() => handleToggleIncluded(item)}
+                          aria-label={item.included ? `Exclude ${gear.name}` : `Include ${gear.name}`}
                           className={cn(
                             'w-5 h-5 rounded border-2 shrink-0 transition-colors flex items-center justify-center',
                             item.included
@@ -269,6 +271,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                         <select
                           value={item.wear_type}
                           onChange={e => handleUpdateWearType(item, e.target.value as WearType)}
+                          aria-label={`Wear type for ${gear.name}`}
                           className="text-xs border border-input rounded-lg px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
                         >
                           <option value="base">Base</option>
@@ -281,15 +284,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                           <button
                             onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
                             disabled={item.quantity <= 1}
+                            aria-label={`Decrease quantity of ${gear.name}`}
                             className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs disabled:opacity-40"
                           >
                             −
                           </button>
-                          <span className="text-sm font-medium w-5 text-center tabular-nums">
+                          <span className="text-sm font-medium w-5 text-center tabular-nums" aria-label={`Quantity: ${item.quantity}`}>
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
+                            aria-label={`Increase quantity of ${gear.name}`}
                             className="w-6 h-6 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs"
                           >
                             +
@@ -311,6 +316,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                         {/* Remove */}
                         <button
                           onClick={() => handleRemoveItem(item)}
+                          aria-label={`Remove ${gear.name} from trip`}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -326,16 +332,14 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       </div>
 
       {/* Delete trip */}
-      {items.length > 0 && (
-        <div className="mt-10 pt-6 border-t border-border">
-          <button
-            onClick={handleDeleteTrip}
-            className="text-sm text-muted-foreground hover:text-destructive transition-colors"
-          >
-            Delete this trip
-          </button>
-        </div>
-      )}
+      <div className="mt-10 pt-6 border-t border-border">
+        <button
+          onClick={handleDeleteTrip}
+          className="text-sm text-muted-foreground hover:text-destructive transition-colors"
+        >
+          Delete this trip
+        </button>
+      </div>
 
       {/* Add item modal */}
       {showAddModal && (

@@ -175,7 +175,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
           <h2 className="text-base font-semibold text-foreground">
             {isEdit ? 'Edit gear item' : 'Add gear item'}
           </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>

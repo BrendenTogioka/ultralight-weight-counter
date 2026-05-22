@@ -116,7 +116,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
   }
 
   return (
-    <div className="px-8 py-8 max-w-6xl mx-auto">
+    <div className="px-4 sm:px-8 py-8 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -202,6 +202,8 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
         <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => setViewMode('list')}
+            aria-label="List view"
+            aria-pressed={viewMode === 'list'}
             className={cn(
               'p-2 transition-colors',
               viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
@@ -211,6 +213,8 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
           </button>
           <button
             onClick={() => setViewMode('grid')}
+            aria-label="Grid view"
+            aria-pressed={viewMode === 'grid'}
             className={cn(
               'p-2 transition-colors',
               viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
