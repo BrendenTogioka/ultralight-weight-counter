@@ -382,6 +382,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                   Create checklist
                 </DropdownMenu.Item>
+                <DropdownMenu.Separator className="sm:hidden h-px bg-border my-1 -mx-1" />
                 <DropdownMenu.Item asChild className="sm:hidden">
                   <Link
                     href={`/trips/${trip.id}/export`}
