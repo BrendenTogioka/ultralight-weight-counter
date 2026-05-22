@@ -17,22 +17,24 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { fadeIn } from '@/lib/motion'
 
-// ─── Color palettes ───────────────────────────────────────────────────────────
+// ─── Color palette — derived from app brand tokens ───────────────────────────
+// Primary: tomato #f06543 | Sandy-brown: #f09d51 | Weight-worn purple: #9952e0
+// Earthy companions keep the warm, outdoorsy feel.
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Pack: '#818cf8',
-  Shelter: '#a78bfa',
-  Sleep: '#60a5fa',
-  Kitchen: '#fbbf24',
-  Clothing: '#34d399',
-  Water: '#22d3ee',
-  Electronics: '#fb923c',
-  Safety: '#f87171',
-  Misc: '#94a3b8',
+  Pack:        '#f06543',  // tomato — primary brand
+  Shelter:     '#f09d51',  // sandy-brown — gradient start
+  Sleep:       '#e8c25a',  // warm gold
+  Kitchen:     '#9952e0',  // weight-worn purple
+  Clothing:    '#5faf8c',  // sage green
+  Water:       '#5ba0c0',  // steel blue
+  Electronics: '#d97b5a',  // burnt sienna
+  Safety:      '#bf8c4a',  // earth / khaki
+  Misc:        '#94a3a0',  // warm slate
 }
 const COLOR_FALLBACKS = [
-  '#818cf8', '#a78bfa', '#60a5fa', '#fbbf24',
-  '#34d399', '#22d3ee', '#fb923c', '#f87171', '#94a3b8',
+  '#f06543', '#f09d51', '#e8c25a', '#9952e0',
+  '#5faf8c', '#5ba0c0', '#d97b5a', '#bf8c4a', '#94a3a0',
 ]
 function catColor(name: string, idx: number) {
   return CATEGORY_COLORS[name] ?? COLOR_FALLBACKS[idx % COLOR_FALLBACKS.length]
@@ -236,13 +238,13 @@ function CompareTab({
           <XAxis type="number" tick={{ fontSize: 10, fill: CHART_MUTED }} tickFormatter={v => `${v}lb`} />
           <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: CHART_MUTED }} width={60} />
           <Tooltip content={<ChartTooltip />} />
-          <Bar dataKey="current" name="This trip" fill="#818cf8" radius={[0, 3, 3, 0]} barSize={9} />
-          <Bar dataKey="average" name="Your avg" fill="#94a3b8" radius={[0, 3, 3, 0]} barSize={9} />
+          <Bar dataKey="current" name="This trip" fill="#f06543" radius={[0, 3, 3, 0]} barSize={9} />
+          <Bar dataKey="average" name="Your avg" fill="#94a3a0" radius={[0, 3, 3, 0]} barSize={9} />
         </BarChart>
       </ResponsiveContainer>
       <div className="flex items-center gap-5 justify-center mt-2 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#818cf8' }} />This trip</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#94a3b8' }} />Your avg</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#f06543' }} />This trip</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#94a3a0' }} />Your avg</span>
       </div>
     </div>
   )

@@ -34,10 +34,11 @@ function tripLabel(trip: Trip): string {
 }
 
 const CHART_MUTED = '#888'
-const BAR_BASE = '#818cf8'
-const BAR_WORN = '#60a5fa'
-const BAR_CONSUMABLE = '#34d399'
-const LINE_COLOR = '#818cf8'
+const BAR_BASE =       '#f06543'  // tomato — matches --weight-base
+const BAR_WORN =       '#9952e0'  // purple — matches --weight-worn
+const BAR_CONSUMABLE = '#f09d51'  // sandy-brown — matches --weight-consumable
+const LINE_COLOR =     '#f06543'  // tomato
+const LINE_TOTAL =     '#f09d51'  // sandy-brown
 
 // ─── Custom tooltip ───────────────────────────────────────────────────────────
 
@@ -204,10 +205,10 @@ export function TripChartsSection({ trips }: Props) {
                 <Line
                   type="monotone"
                   dataKey={`Total (${ul})`}
-                  stroke={BAR_CONSUMABLE}
+                  stroke={LINE_TOTAL}
                   strokeWidth={2}
                   strokeDasharray="4 3"
-                  dot={{ r: 4, fill: BAR_CONSUMABLE, strokeWidth: 0 }}
+                  dot={{ r: 4, fill: LINE_TOTAL, strokeWidth: 0 }}
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
