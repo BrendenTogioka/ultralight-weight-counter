@@ -31,6 +31,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [isTemplate, setIsTemplate] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -59,6 +60,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
           name: name.trim(),
           description: description.trim() || null,
           trip_date: date || null,
+          trip_date_end: endDate || null,
           is_template: isTemplate,
           cloned_from_id: selectedSourceId || null,
         })
@@ -227,14 +229,26 @@ export function NewTripClient({ existingTrips, userId }: Props) {
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Trip date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className={inputCls}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Start date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">End date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                min={date || undefined}
+                className={inputCls}
+              />
+            </div>
           </div>
 
           {/* Save as template toggle */}
