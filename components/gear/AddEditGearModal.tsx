@@ -330,7 +330,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 text-sm font-medium btn-primary rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEdit ? 'Save changes' : 'Add to library'}

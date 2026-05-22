@@ -16,36 +16,34 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 })
 
-export function ThemeProvider({
-  children,
-  defaultTheme = 'light',
-}: {
-  children: React.ReactNode
-  defaultTheme?: Theme
-}) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme)
+function applyTheme(t: Theme) {
+  document.documentElement.classList.toggle('dark', t === 'dark')
+  localStorage.setItem('theme', t)
+}
 
-  // Apply the class to <html> whenever theme changes
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
-    localStorage.setItem('theme', theme)
-  }, [theme])
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>('light')
 
-  // On first mount, read localStorage so the preference survives page reloads
+  // On mount: read stored preference and apply it once
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null
-    if (stored === 'dark' || stored === 'light') {
-      setThemeState(stored)
-    }
+    const initial = stored === 'dark' ? 'dark' : 'light'
+    setThemeState(initial)
+    applyTheme(initial)
   }, [])
 
-  const setTheme = useCallback((t: Theme) => setThemeState(t), [])
-  const toggleTheme = useCallback(() => setThemeState(t => t === 'light' ? 'dark' : 'light'), [])
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t)
+    applyTheme(t)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      applyTheme(next)
+      return next
+    })
+  }, [])
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>

@@ -115,7 +115,7 @@ export function SettingsClient({ settings, user }: Props) {
           <button
             onClick={handleSaveUnit}
             disabled={savingUnit || defaultUnit === settings?.default_unit}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {savingUnit && <Loader2 className="h-4 w-4 animate-spin" />}
             Save preference
@@ -177,7 +177,7 @@ export function SettingsClient({ settings, user }: Props) {
             <button
               type="submit"
               disabled={savingPassword || !newPassword || !confirmPassword}
-              className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+              className="w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
             >
               {savingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
               Update password

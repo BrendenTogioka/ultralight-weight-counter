@@ -155,17 +155,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             <p className="text-sm text-muted-foreground mt-0.5">{trip.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Link
             href={`/trips/${trip.id}/export`}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <Download className="h-4 w-4" />
             Export
           </Link>
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center justify-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="h-4 w-4" />
             Add item
@@ -186,7 +186,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               <Plus className="h-4 w-4" />
               Add item

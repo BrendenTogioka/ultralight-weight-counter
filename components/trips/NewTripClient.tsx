@@ -250,7 +250,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
           <button
             onClick={handleCreate}
             disabled={saving || !name.trim()}
-            className="mt-2 w-full bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            className="mt-2 w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Create trip

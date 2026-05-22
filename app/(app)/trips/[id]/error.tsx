@@ -34,7 +34,7 @@ export default function TripError({
         </p>
         <button
           onClick={reset}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Try again
