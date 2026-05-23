@@ -29,13 +29,11 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
 
   const weightOz = getEffectiveWeightOz(item)
   const totalOz = weightOz * quantity
+  const isDirty = wearType !== item.wear_type || quantity !== item.quantity
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   async function handleSave() {
-    if (wearType === item.wear_type && quantity === item.quantity) {
-      onClose()
-      return
-    }
+    if (!isDirty) { onClose(); return }
     setSaving(true)
     const supabase = createClient()
     const { error } = await supabase
@@ -187,7 +185,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
             disabled={saving}
             className="px-4 py-2 text-sm btn-primary rounded-lg font-medium disabled:opacity-60"
           >
-            Done
+            {isDirty ? 'Save' : 'Done'}
           </button>
         </div>
       </motion.div>

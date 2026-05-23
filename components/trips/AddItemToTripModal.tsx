@@ -174,7 +174,7 @@ export function AddItemToTripModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div
         variants={backdropVariants}
         initial="initial"
@@ -186,7 +186,7 @@ export function AddItemToTripModal({
         variants={modalCardVariants}
         initial="initial"
         animate="animate"
-        className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        className="relative bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
           <h2 className="text-base font-semibold text-foreground">Add item to trip</h2>
