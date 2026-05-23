@@ -31,3 +31,33 @@ create policy "users update own gear images"
 create policy "public read gear images"
   on storage.objects for select
   using (bucket_id = 'gear-images');
+
+-- ============================================================
+-- Bucket name: trip-images
+-- Public bucket: YES (check the toggle)
+-- ============================================================
+
+create policy "users upload own trip images"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'trip-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "users update own trip images"
+  on storage.objects for update
+  using (
+    bucket_id = 'trip-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "users delete own trip images"
+  on storage.objects for delete
+  using (
+    bucket_id = 'trip-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "public read trip images"
+  on storage.objects for select
+  using (bucket_id = 'trip-images');
