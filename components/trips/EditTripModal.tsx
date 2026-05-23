@@ -5,6 +5,7 @@ import { X, Loader2, ImageIcon } from 'lucide-react'
 import type { Trip } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { validateImageFile } from '@/lib/validation'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { backdropVariants, modalCardVariants } from '@/lib/motion'
@@ -23,15 +24,28 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
   const [endDate, setEndDate] = useState(trip.trip_date_end ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(trip.featured_image_url ?? null)
+  const [imageDragging, setImageDragging] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  function applyImageFile(file: File) {
+    const err = validateImageFile(file)
+    if (err) { toast.error(err); return }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const err = validateImageFile(file)
-    if (err) { toast.error(err); e.target.value = ''; return }
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+    applyImageFile(file)
+    e.target.value = ''
+  }
+
+  function handleImageDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setImageDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) applyImageFile(file)
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -146,14 +160,25 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
           <Field label="Featured image">
             <div
               onClick={() => fileRef.current?.click()}
-              className="relative w-full aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer overflow-hidden bg-secondary/30 flex items-center justify-center"
+              onDragOver={e => { e.preventDefault(); setImageDragging(true) }}
+              onDragLeave={() => setImageDragging(false)}
+              onDrop={handleImageDrop}
+              className={cn(
+                'relative w-full aspect-video rounded-xl border-2 border-dashed transition-colors cursor-pointer overflow-hidden bg-secondary/30 flex items-center justify-center',
+                imageDragging ? 'border-primary bg-primary/5 scale-[1.01]' : 'border-border hover:border-primary/50'
+              )}
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <ImageIcon className="h-6 w-6" />
-                  <span className="text-xs">Click to upload (16:9)</span>
+                  <span className="text-xs">{imageDragging ? 'Drop to upload' : 'Click or drag & drop (16:9)'}</span>
+                </div>
+              )}
+              {imageDragging && (
+                <div className="absolute inset-0 bg-primary/10 flex items-center justify-center rounded-xl">
+                  <p className="text-sm font-medium text-primary">Drop image here</p>
                 </div>
               )}
             </div>

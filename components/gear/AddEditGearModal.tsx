@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Upload, Loader2, Check } from 'lucide-react'
 import type { GearItem, GearType, WeightUnit } from '@/types'
-import { GEAR_CATEGORIES } from '@/lib/utils'
+import { GEAR_CATEGORIES, cn } from '@/lib/utils'
 import { toOz } from '@/lib/calculations'
 import { createClient } from '@/lib/supabase/client'
 import { gearItemSchema, validateImageFile } from '@/lib/validation'
@@ -55,6 +55,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url ?? null)
+  const [imageDragging, setImageDragging] = useState(false)
   const [saving, setSaving] = useState(false)
   const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([])
   const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set())
@@ -71,17 +72,25 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
       .then(({ data }) => setAvailableTrips(data ?? []))
   }, [isEdit, userId])
 
+  function applyImageFile(file: File) {
+    const err = validateImageFile(file)
+    if (err) { toast.error(err); return }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const err = validateImageFile(file)
-    if (err) {
-      toast.error(err)
-      e.target.value = ''
-      return
-    }
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+    applyImageFile(file)
+    e.target.value = ''
+  }
+
+  function handleImageDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setImageDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) applyImageFile(file)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -231,14 +240,25 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
             <label className="text-sm font-medium text-foreground">Photo (optional)</label>
             <div
               onClick={() => fileRef.current?.click()}
-              className="w-40 aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center overflow-hidden bg-secondary/30"
+              onDragOver={e => { e.preventDefault(); setImageDragging(true) }}
+              onDragLeave={() => setImageDragging(false)}
+              onDrop={handleImageDrop}
+              className={cn(
+                'relative w-40 aspect-square rounded-xl border-2 border-dashed transition-colors cursor-pointer flex items-center justify-center overflow-hidden bg-secondary/30',
+                imageDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              )}
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
               ) : (
                 <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
                   <Upload className="h-5 w-5" />
-                  <span className="text-xs">Click to upload</span>
+                  <span className="text-xs text-center px-1">{imageDragging ? 'Drop here' : 'Click or drag'}</span>
+                </div>
+              )}
+              {imageDragging && (
+                <div className="absolute inset-0 bg-primary/10 flex items-center justify-center rounded-xl">
+                  <p className="text-xs font-medium text-primary">Drop</p>
                 </div>
               )}
             </div>
