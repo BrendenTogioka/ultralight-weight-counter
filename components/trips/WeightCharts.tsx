@@ -195,10 +195,11 @@ function CompareTab({
     }
 
     const current = calculateCategoryWeights(items)
+    const toDisplayUnit = (oz: number) => unit === 'g' ? +(oz * 28.3495).toFixed(0) : +(oz / 16).toFixed(2)
     setData(current.map(({ category, weight_oz }) => ({
       category: category.length > 8 ? category.slice(0, 7) + '…' : category,
-      current: +(weight_oz / 16).toFixed(2),
-      average: +((avgByCat[category] ?? 0) / 16).toFixed(2),
+      current: toDisplayUnit(weight_oz),
+      average: toDisplayUnit(avgByCat[category] ?? 0),
     })))
     setLoading(false)
   }
@@ -235,7 +236,7 @@ function CompareTab({
           data={data}
           margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
         >
-          <XAxis type="number" tick={{ fontSize: 10, fill: CHART_MUTED }} tickFormatter={v => `${v}lb`} />
+          <XAxis type="number" tick={{ fontSize: 10, fill: CHART_MUTED }} tickFormatter={v => unit === 'g' ? `${v}g` : `${v}lb`} />
           <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: CHART_MUTED }} width={60} />
           <Tooltip content={<ChartTooltip />} />
           <Bar dataKey="current" name="This trip" fill="#f06543" radius={[0, 3, 3, 0]} barSize={9} />

@@ -124,6 +124,7 @@ export function NewTripClient({ existingTrips, userId }: Props) {
             override_weight_oz: item.override_weight_oz,
             included: item.included,
             notes: item.notes,
+            sort_order: item.sort_order ?? 0,
           }))
 
           const { error: itemsError } = await supabase

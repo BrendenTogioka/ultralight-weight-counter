@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, FileText, Table, Download, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { Trip, TripItem, WeightUnit } from '@/types'
 import {
   calculateWeightSummary,
@@ -154,7 +155,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
       doc.save(`${trip.name.replace(/\s+/g, '-').toLowerCase()}-gear-list.pdf`)
     } catch (err) {
       console.error(err)
-      alert('PDF export failed. Please try again.')
+      toast.error('PDF export failed. Please try again.')
     } finally {
       setExportingPdf(false)
     }
@@ -192,7 +193,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error(err)
-      alert('CSV export failed. Please try again.')
+      toast.error('CSV export failed. Please try again.')
     } finally {
       setExportingCsv(false)
     }

@@ -5,6 +5,7 @@ import { X, Trash2, Pencil } from 'lucide-react'
 import type { TripItem, WearType } from '@/types'
 import { getEffectiveWeightOz, formatWeight } from '@/lib/calculations'
 import { CATEGORY_ICONS } from '@/lib/utils'
+import { useUnit } from '@/components/providers/UnitProvider'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
@@ -21,6 +22,7 @@ interface Props {
 
 export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEditGear }: Props) {
   const gear = item.gear_item!
+  const { unit } = useUnit()
   const [wearType, setWearType] = useState<WearType>(item.wear_type)
   const [quantity, setQuantity] = useState(item.quantity)
   const [saving, setSaving] = useState(false)
@@ -99,7 +101,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
                 {gear.category}{gear.type ? ` · ${gear.type}` : ''}
               </p>
               <p className="text-sm font-semibold text-foreground mt-2 tabular-nums">
-                {formatWeight(weightOz, 'oz', 1)} each
+                {formatWeight(weightOz, unit, 1)} each
               </p>
               {gear.notes && (
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{gear.notes}</p>
@@ -147,7 +149,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
               </button>
               {quantity > 1 && (
                 <span className="text-sm text-muted-foreground tabular-nums ml-1">
-                  = {formatWeight(totalOz, 'oz', 1)} total
+                  = {formatWeight(totalOz, unit, 1)} total
                 </span>
               )}
             </div>
