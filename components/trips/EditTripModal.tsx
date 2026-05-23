@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Loader2, ImageIcon } from 'lucide-react'
 import type { Trip } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import { validateImageFile } from '@/lib/validation'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { backdropVariants, modalCardVariants } from '@/lib/motion'
@@ -15,17 +16,45 @@ interface Props {
 }
 
 export function EditTripModal({ trip, onClose, onSaved }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(trip.name)
   const [description, setDescription] = useState(trip.description ?? '')
   const [startDate, setStartDate] = useState(trip.trip_date ?? '')
   const [endDate, setEndDate] = useState(trip.trip_date_end ?? '')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(trip.featured_image_url ?? null)
   const [saving, setSaving] = useState(false)
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateImageFile(file)
+    if (err) { toast.error(err); e.target.value = ''; return }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return toast.error('Trip name is required')
     setSaving(true)
     const supabase = createClient()
+
+    let featured_image_url = trip.featured_image_url ?? null
+
+    // Upload new image if selected
+    if (imageFile) {
+      const ext = imageFile.name.split('.').pop()
+      const path = `${trip.user_id}/${trip.id}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('trip-images')
+        .upload(path, imageFile, { upsert: true })
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage.from('trip-images').getPublicUrl(path)
+        featured_image_url = urlData.publicUrl
+      }
+    }
+
     const { data, error } = await supabase
       .from('trips')
       .update({
@@ -33,6 +62,7 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
         description: description.trim() || null,
         trip_date: startDate || null,
         trip_date_end: endDate || null,
+        featured_image_url,
       })
       .eq('id', trip.id)
       .select()
@@ -111,6 +141,24 @@ export function EditTripModal({ trip, onClose, onSaved }: Props) {
               />
             </Field>
           </div>
+
+          {/* Featured image */}
+          <Field label="Featured image">
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="relative w-full aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer overflow-hidden bg-secondary/30 flex items-center justify-center"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="h-6 w-6" />
+                  <span className="text-xs">Click to upload (16:9)</span>
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          </Field>
 
           <div className="flex gap-3 pt-1">
             <button

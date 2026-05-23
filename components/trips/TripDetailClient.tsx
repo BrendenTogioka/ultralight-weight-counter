@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Plus, Download, Pencil, Trash2,
   ChevronDown, ChevronUp, ClipboardList,
-  MoreHorizontal, Copy, GripVertical,
+  MoreHorizontal, Copy, GripVertical, List, LayoutGrid,
 } from 'lucide-react'
 import Link from 'next/link'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -28,6 +28,7 @@ import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
 import { TripItemDetailModal } from '@/components/trips/TripItemDetailModal'
+import { TripItemCard } from '@/components/trips/TripItemCard'
 import { EditTripModal } from '@/components/trips/EditTripModal'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
 import { WeightCharts } from '@/components/trips/WeightCharts'
@@ -37,6 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
 type WearFilter = 'all' | WearType
+type TripViewMode = 'list' | 'grid'
 
 interface Props {
   trip: Trip
@@ -144,6 +146,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const [selectedItem, setSelectedItem] = useState<TripItem | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [wearFilter, setWearFilter] = useState<WearFilter>('all')
+  const [tripViewMode, setTripViewMode] = useState<TripViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('trip_item_view') as TripViewMode) ?? 'list'
+    }
+    return 'list'
+  })
+
+  function changeTripViewMode(mode: TripViewMode) {
+    setTripViewMode(mode)
+    if (typeof window !== 'undefined') localStorage.setItem('trip_item_view', mode)
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -424,6 +437,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         </div>
       </div>
 
+      {/* Featured image hero */}
+      {trip.featured_image_url && (
+        <div className="relative aspect-video w-full overflow-hidden rounded-2xl mb-6">
+          <img
+            src={trip.featured_image_url}
+            alt={trip.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
       {/* Weight summary */}
       <WeightSummaryBar summary={summary} unit={unit} />
 
@@ -432,9 +456,9 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         <WeightCharts items={items} unit={unit} tripId={trip.id} userId={userId} />
       )}
 
-      {/* Wear type filter chips */}
+      {/* Wear type filter chips + view toggle */}
       {items.length > 0 && (
-        <div className="flex items-center gap-2 mt-5">
+        <div className="flex items-center gap-2 mt-5 flex-wrap">
           {(['all', 'base', 'worn', 'consumable'] as WearFilter[]).map(f => (
             <button
               key={f}
@@ -449,6 +473,29 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
               {f === 'all' ? 'All items' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
+          {/* View mode toggle */}
+          <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
+            <button
+              onClick={() => changeTripViewMode('list')}
+              aria-label="List view"
+              className={cn(
+                'p-1.5 transition-colors',
+                tripViewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => changeTripViewMode('grid')}
+              aria-label="Card view"
+              className={cn(
+                'p-1.5 transition-colors',
+                tripViewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -514,8 +561,8 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                 </div>
               </button>
 
-              {/* Sortable items */}
-              {!collapsed && (
+              {/* Items — list or card view */}
+              {!collapsed && tripViewMode === 'list' && (
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -545,6 +592,19 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                     ))}
                   </SortableContext>
                 </DndContext>
+              )}
+
+              {!collapsed && tripViewMode === 'grid' && (
+                <div className="p-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
+                  {catItems.map(item => (
+                    <TripItemCard
+                      key={item.id}
+                      item={item}
+                      unit={unit}
+                      onClick={() => setSelectedItem(item)}
+                    />
+                  ))}
+                </div>
               )}
             </motion.div>
           )

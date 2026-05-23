@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
-import { Plus, Search, SlidersHorizontal, LayoutGrid, List, ArrowUpDown } from 'lucide-react'
-import type { GearItem, GearType, LibraryFilters, SortField, SortDirection } from '@/types'
-import { GEAR_CATEGORIES, CATEGORY_ICONS, cn } from '@/lib/utils'
-import { formatWeight, toOz } from '@/lib/calculations'
-import { useUnit } from '@/components/providers/UnitProvider'
+import { useState, useMemo } from 'react'
+import { Plus, Search, ArrowUpDown, LayoutGrid, List } from 'lucide-react'
+import type { GearItem, GearType, LibraryFilters, SortField } from '@/types'
+import { GEAR_CATEGORIES, cn } from '@/lib/utils'
+import { toOz } from '@/lib/calculations'
 import { GearItemCard } from '@/components/gear/GearItemCard'
 import { GearItemRow } from '@/components/gear/GearItemRow'
+import { GearDetailModal } from '@/components/gear/GearDetailModal'
 import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { motion } from 'framer-motion'
 import { pageVariants } from '@/lib/motion'
@@ -21,7 +21,6 @@ interface Props {
 }
 
 export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
-  const { unit } = useUnit()
   const [items, setItems] = useState<GearItem[]>(initialItems)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== 'undefined') {
@@ -29,8 +28,9 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
     }
     return 'list'
   })
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [detailItem, setDetailItem] = useState<GearItem | null>(null)
   const [editingItem, setEditingItem] = useState<GearItem | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [filters, setFilters] = useState<LibraryFilters>({
     search: '',
     category: '',
@@ -45,21 +45,17 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
     return [...new Set(brands)].sort()
   }, [items])
 
-  const uniqueTypes = useMemo(() => {
-    return gearTypes.map(t => t.name)
-  }, [gearTypes])
+  const uniqueTypes = useMemo(() => gearTypes.map(t => t.name), [gearTypes])
 
   const filteredItems = useMemo(() => {
     let result = [...items]
-
     if (filters.search) {
       const q = filters.search.toLowerCase()
-      result = result.filter(
-        i =>
-          i.name.toLowerCase().includes(q) ||
-          i.brand?.toLowerCase().includes(q) ||
-          i.category.toLowerCase().includes(q) ||
-          i.type?.toLowerCase().includes(q)
+      result = result.filter(i =>
+        i.name.toLowerCase().includes(q) ||
+        i.brand?.toLowerCase().includes(q) ||
+        i.category.toLowerCase().includes(q) ||
+        i.type?.toLowerCase().includes(q)
       )
     }
     if (filters.category) result = result.filter(i => i.category === filters.category)
@@ -69,51 +65,37 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
     result.sort((a, b) => {
       let valA: string | number = 0
       let valB: string | number = 0
-
       switch (filters.sortField) {
         case 'weight':
           valA = toOz(a.weight_oz, a.weight_unit)
           valB = toOz(b.weight_oz, b.weight_unit)
           break
         case 'name':
-          valA = a.name.toLowerCase()
-          valB = b.name.toLowerCase()
-          break
+          valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); break
         case 'brand':
-          valA = (a.brand ?? '').toLowerCase()
-          valB = (b.brand ?? '').toLowerCase()
-          break
+          valA = (a.brand ?? '').toLowerCase(); valB = (b.brand ?? '').toLowerCase(); break
         case 'category':
-          valA = a.category.toLowerCase()
-          valB = b.category.toLowerCase()
-          break
+          valA = a.category.toLowerCase(); valB = b.category.toLowerCase(); break
         case 'created_at':
-          valA = a.created_at
-          valB = b.created_at
-          break
+          valA = a.created_at; valB = b.created_at; break
       }
-
       if (valA < valB) return filters.sortDirection === 'asc' ? -1 : 1
       if (valA > valB) return filters.sortDirection === 'asc' ? 1 : -1
       return 0
     })
-
     return result
   }, [items, filters])
 
   function changeViewMode(mode: ViewMode) {
     setViewMode(mode)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('gear_view', mode)
-    }
+    if (typeof window !== 'undefined') localStorage.setItem('gear_view', mode)
   }
 
   function toggleSort(field: SortField) {
     setFilters(prev => ({
       ...prev,
       sortField: field,
-      sortDirection:
-        prev.sortField === field && prev.sortDirection === 'asc' ? 'desc' : 'asc',
+      sortDirection: prev.sortField === field && prev.sortDirection === 'asc' ? 'desc' : 'asc',
     }))
   }
 
@@ -121,12 +103,24 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
     if (isNew) {
       setItems(prev => [item, ...prev])
     } else {
-      setItems(prev => prev.map(i => (i.id === item.id ? item : i)))
+      setItems(prev => prev.map(i => i.id === item.id ? item : i))
+      // Refresh detail modal with updated item
+      setDetailItem(item)
     }
   }
 
   function handleItemDeleted(id: string) {
     setItems(prev => prev.filter(i => i.id !== id))
+  }
+
+  function openDetail(item: GearItem) {
+    setDetailItem(item)
+  }
+
+  function handleEditFromDetail(item: GearItem) {
+    setDetailItem(null)
+    setEditingItem(item)
+    setShowEditModal(true)
   }
 
   return (
@@ -145,7 +139,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
           </p>
         </div>
         <button
-          onClick={() => { setEditingItem(null); setShowAddModal(true) }}
+          onClick={() => { setEditingItem(null); setShowEditModal(true) }}
           className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="h-4 w-4" />
@@ -171,36 +165,30 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
         <select
           value={filters.category}
           onChange={e => setFilters(prev => ({ ...prev, category: e.target.value }))}
-          className="px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
         >
           <option value="">All categories</option>
-          {GEAR_CATEGORIES.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
+          {GEAR_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
 
         {/* Type filter */}
         <select
           value={filters.type}
           onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))}
-          className="px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
         >
           <option value="">All types</option>
-          {uniqueTypes.map(type => (
-            <option key={type} value={type}>{type}</option>
-          ))}
+          {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
         </select>
 
         {/* Brand filter */}
         <select
           value={filters.brand}
           onChange={e => setFilters(prev => ({ ...prev, brand: e.target.value }))}
-          className="px-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
         >
           <option value="">All brands</option>
-          {uniqueBrands.map(brand => (
-            <option key={brand} value={brand}>{brand}</option>
-          ))}
+          {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
         </select>
 
         {/* Sort by weight */}
@@ -217,7 +205,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
           Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
         </button>
 
-        {/* View mode */}
+        {/* View mode toggle */}
         <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
           <button
             onClick={() => changeViewMode('list')}
@@ -265,18 +253,13 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredItems.map(item => (
-            <GearItemCard
-              key={item.id}
-              item={item}
-              onEdit={() => { setEditingItem(item); setShowAddModal(true) }}
-              onDelete={handleItemDeleted}
-            />
+            <GearItemCard key={item.id} item={item} onClick={() => openDetail(item)} />
           ))}
         </div>
       ) : (
         <div className="border border-border rounded-xl overflow-hidden">
           {/* List header */}
-          <div className="grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 sm:gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto_auto] gap-3 sm:gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
             <div className="w-8" />
             <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('name')}>
               Name {filters.sortField === 'name' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
@@ -290,27 +273,35 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
             <button className="w-16 sm:w-20 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
               Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
-            <div className="w-14 sm:w-16" />
           </div>
           {filteredItems.map((item, idx) => (
             <GearItemRow
               key={item.id}
               item={item}
               isLast={idx === filteredItems.length - 1}
-              onEdit={() => { setEditingItem(item); setShowAddModal(true) }}
-              onDelete={handleItemDeleted}
+              onClick={() => openDetail(item)}
             />
           ))}
         </div>
       )}
 
-      {/* Add/Edit Modal */}
-      {showAddModal && (
+      {/* Gear detail modal */}
+      {detailItem && (
+        <GearDetailModal
+          item={detailItem}
+          onClose={() => setDetailItem(null)}
+          onEdit={() => handleEditFromDetail(detailItem)}
+          onDeleted={id => { handleItemDeleted(id); setDetailItem(null) }}
+        />
+      )}
+
+      {/* Add / Edit modal */}
+      {showEditModal && (
         <AddEditGearModal
           item={editingItem}
           gearTypes={gearTypes}
           userId={userId}
-          onClose={() => { setShowAddModal(false); setEditingItem(null) }}
+          onClose={() => { setShowEditModal(false); setEditingItem(null) }}
           onSaved={handleItemSaved}
         />
       )}

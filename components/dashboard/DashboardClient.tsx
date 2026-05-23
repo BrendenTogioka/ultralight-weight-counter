@@ -1,21 +1,25 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Mountain, ArrowRight } from 'lucide-react'
+import { Plus, Mountain, ArrowRight, Package } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { TripCard } from '@/components/trips/TripCard'
 import { TripChartsSection } from '@/components/dashboard/TripChartsSection'
-import type { Trip } from '@/types'
+import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
+import type { Trip, GearType } from '@/types'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
 const RECENT_LIMIT = 6
 
 interface Props {
   trips: Trip[]
+  userId: string
+  gearTypes: GearType[]
 }
 
-export function DashboardClient({ trips }: Props) {
+export function DashboardClient({ trips, userId, gearTypes }: Props) {
+  const [showAddGear, setShowAddGear] = useState(false)
   const activTrips = useMemo(() => trips.filter(t => !t.is_template), [trips])
   const templates = useMemo(() => trips.filter(t => t.is_template), [trips])
 
@@ -38,13 +42,22 @@ export function DashboardClient({ trips }: Props) {
             {activTrips.length} trip{activTrips.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link
-          href="/trips/new"
-          className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">New trip</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddGear(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-secondary transition-colors text-foreground"
+          >
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Add gear</span>
+          </button>
+          <Link
+            href="/trips/new"
+            className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New trip</span>
+          </Link>
+        </div>
       </div>
 
       {/* Analytics charts (only shown when 2+ trips exist) */}
@@ -131,6 +144,17 @@ export function DashboardClient({ trips }: Props) {
             ))}
           </motion.div>
         </section>
+      )}
+
+      {/* Add Gear modal */}
+      {showAddGear && (
+        <AddEditGearModal
+          item={null}
+          gearTypes={gearTypes}
+          userId={userId}
+          onClose={() => setShowAddGear(false)}
+          onSaved={() => setShowAddGear(false)}
+        />
       )}
     </motion.div>
   )

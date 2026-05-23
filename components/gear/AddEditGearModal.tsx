@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { X, Upload, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, Upload, Loader2, Check } from 'lucide-react'
 import type { GearItem, GearType, WeightUnit } from '@/types'
 import { GEAR_CATEGORIES } from '@/lib/utils'
 import { toOz } from '@/lib/calculations'
@@ -56,6 +56,20 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(item?.image_url ?? null)
   const [saving, setSaving] = useState(false)
+  const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([])
+  const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (isEdit) return // don't show trip selector when editing
+    const supabase = createClient()
+    supabase
+      .from('trips')
+      .select('id, name')
+      .eq('user_id', userId)
+      .eq('is_template', false)
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => setAvailableTrips(data ?? []))
+  }, [isEdit, userId])
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -156,7 +170,26 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
           .select()
           .single()
         if (error) throw error
-        toast.success(`"${data.name}" added to library`)
+
+        // Add to selected trips
+        if (selectedTripIds.size > 0) {
+          const tripItems = Array.from(selectedTripIds).map(tripId => ({
+            trip_id: tripId,
+            gear_item_id: data.id,
+            user_id: userId,
+            quantity: 1,
+            wear_type: 'base' as const,
+            included: true,
+          }))
+          await supabase.from('trip_items').insert(tripItems)
+        }
+
+        const tripCount = selectedTripIds.size
+        toast.success(
+          tripCount > 0
+            ? `"${data.name}" added to library and ${tripCount} trip${tripCount !== 1 ? 's' : ''}`
+            : `"${data.name}" added to library`
+        )
         onSaved(data, true)
       }
 
@@ -331,6 +364,34 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
               placeholder="Optional notes…" maxLength={500}
             />
           </Field>
+
+          {/* Add to trips (new items only) */}
+          {!isEdit && availableTrips.length > 0 && (
+            <Field label="Add to trips (optional)">
+              <div className="border border-border rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                {availableTrips.map((t, idx) => {
+                  const checked = selectedTripIds.has(t.id)
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setSelectedTripIds(prev => {
+                        const next = new Set(prev)
+                        next.has(t.id) ? next.delete(t.id) : next.add(t.id)
+                        return next
+                      })}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-secondary/30 transition-colors text-sm ${idx > 0 ? 'border-t border-border' : ''}`}
+                    >
+                      <div className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${checked ? 'bg-primary border-primary' : 'border-border'}`}>
+                        {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                      </div>
+                      <span className={checked ? 'text-foreground' : 'text-muted-foreground'}>{t.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

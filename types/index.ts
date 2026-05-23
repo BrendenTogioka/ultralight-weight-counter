@@ -49,6 +49,7 @@ export interface Trip {
   trip_date_end: string | null
   is_template: boolean
   cloned_from_id: string | null
+  featured_image_url: string | null
   created_at: string
   updated_at: string
   // joined

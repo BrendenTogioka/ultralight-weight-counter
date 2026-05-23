@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Copy, FileStack, Loader2, ArrowLeft } from 'lucide-react'
+import { Plus, Copy, FileStack, Loader2, ArrowLeft, ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 import type { NewTripMode } from '@/types'
 import { createClient } from '@/lib/supabase/client'
-import { tripSchema } from '@/lib/validation'
+import { tripSchema, validateImageFile } from '@/lib/validation'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -26,6 +26,7 @@ interface Props {
 
 export function NewTripClient({ existingTrips, userId }: Props) {
   const router = useRouter()
+  const fileRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<NewTripMode | null>(null)
   const [selectedSourceId, setSelectedSourceId] = useState<string>('')
   const [name, setName] = useState('')
@@ -33,7 +34,18 @@ export function NewTripClient({ existingTrips, userId }: Props) {
   const [date, setDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [isTemplate, setIsTemplate] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateImageFile(file)
+    if (err) { toast.error(err); e.target.value = ''; return }
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
 
   const templates = existingTrips.filter(t => t.is_template)
   const allTrips = existingTrips.filter(t => !t.is_template)
@@ -68,6 +80,19 @@ export function NewTripClient({ existingTrips, userId }: Props) {
         .single()
 
       if (error) throw error
+
+      // Upload featured image if selected
+      if (imageFile) {
+        const ext = imageFile.name.split('.').pop()
+        const path = `${userId}/${newTrip.id}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('trip-images')
+          .upload(path, imageFile, { upsert: true })
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('trip-images').getPublicUrl(path)
+          await supabase.from('trips').update({ featured_image_url: urlData.publicUrl }).eq('id', newTrip.id)
+        }
+      }
 
       // Clone items from source trip
       if ((mode === 'template' || mode === 'duplicate') && selectedSourceId) {
@@ -249,6 +274,25 @@ export function NewTripClient({ existingTrips, userId }: Props) {
                 className={inputCls}
               />
             </div>
+          </div>
+
+          {/* Featured image */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">Featured image</label>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="relative w-full aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer overflow-hidden bg-secondary/30 flex items-center justify-center"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="h-6 w-6" />
+                  <span className="text-xs">Click to upload (16:9)</span>
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
           </div>
 
           {/* Save as template toggle */}

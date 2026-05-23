@@ -206,7 +206,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to trip
+        Back to Trip
       </Link>
 
       <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-1">Export</h1>

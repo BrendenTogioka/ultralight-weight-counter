@@ -90,13 +90,21 @@ export function ChecklistClient({ checklist: initial }: Props) {
           {allDone && <span className="ml-2 text-primary font-medium">— all done! 🎉</span>}
         </p>
 
-        {/* Progress bar */}
+        {/* Progress bar + percentage */}
         {total > 0 && (
-          <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
-              style={{ width: `${(checked / total) * 100}%` }}
-            />
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-muted-foreground">Progress</span>
+              <span className="text-xs font-semibold tabular-nums text-foreground">
+                {Math.round((checked / total) * 100)}%
+              </span>
+            </div>
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${(checked / total) * 100}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
