@@ -51,7 +51,7 @@ export function DashboardClient({ trips }: Props) {
       <TripChartsSection trips={trips} />
 
       {/* Recent trips */}
-      <section>
+      <section className="mt-8 md:mt-10">
         {activTrips.length > 0 && (
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">

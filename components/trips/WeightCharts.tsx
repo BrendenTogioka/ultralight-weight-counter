@@ -302,121 +302,106 @@ export function WeightCharts({ items, unit, userId, tripId }: Props) {
     { id: 'compare', label: 'Compare' },
   ]
 
-  return (
-    <motion.div
-      {...fadeIn}
-      className="bg-card border border-border rounded-2xl p-5 mt-4"
-    >
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-5 overflow-x-auto scrollbar-none">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all',
-              tab === t.id
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
-            )}
-          >
-            {t.label}
-          </button>
+  // ── Chart sections (reused in both tab and grid layouts) ────────────────────
+
+  const BreakdownChart = (
+    <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-6">
+      {mounted ? (
+        <div className="shrink-0">
+          <PieChart width={180} height={180}>
+            <Pie data={categoryData} cx={90} cy={90} innerRadius={52} outerRadius={82} paddingAngle={2} dataKey="value" animationBegin={0} animationDuration={600}>
+              {categoryData.map(entry => <Cell key={entry.name} fill={entry.color} />)}
+            </Pie>
+            <Tooltip content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const d = payload[0].payload
+              return <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs"><p className="font-semibold text-foreground">{d.name}</p><p className="text-muted-foreground">{d.value.toFixed(2)} lb</p></div>
+            }} />
+          </PieChart>
+        </div>
+      ) : <div className="w-[180px] h-[180px] rounded-full bg-secondary/40 animate-pulse shrink-0" />}
+      <div className="flex flex-col gap-2 w-full">
+        {categoryData.map(({ name, value, color }) => (
+          <div key={name} className="flex items-center gap-2.5">
+            <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: color }} />
+            <span className="text-sm text-foreground flex-1 min-w-0">{name}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{value.toFixed(2)} lb</span>
+          </div>
         ))}
       </div>
+    </div>
+  )
 
-      {/* ── Breakdown (donut) ── */}
-      {tab === 'breakdown' && (
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          {mounted ? (
-            <div className="shrink-0">
-              <PieChart width={180} height={180}>
-                <Pie
-                  data={categoryData}
-                  cx={90}
-                  cy={90}
-                  innerRadius={52}
-                  outerRadius={82}
-                  paddingAngle={2}
-                  dataKey="value"
-                  animationBegin={0}
-                  animationDuration={600}
-                >
-                  {categoryData.map(entry => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null
-                    const d = payload[0].payload
-                    return (
-                      <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
-                        <p className="font-semibold text-foreground">{d.name}</p>
-                        <p className="text-muted-foreground">{d.value.toFixed(2)} lb</p>
-                      </div>
-                    )
-                  }}
-                />
-              </PieChart>
-            </div>
-          ) : <div className="w-[180px] h-[180px] rounded-full bg-secondary/40 animate-pulse shrink-0" />}
+  const ItemsChart = (
+    <div>
+      {mounted ? (
+        <ResponsiveContainer width="100%" height={Math.max(180, itemData.length * 34)}>
+          <BarChart layout="vertical" data={itemData} margin={{ top: 0, right: 40, left: 0, bottom: 0 }}>
+            <XAxis type="number" tick={{ fontSize: 10, fill: CHART_MUTED }} tickFormatter={v => `${v}lb`} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: CHART_MUTED }} width={130} />
+            <Tooltip content={<ChartTooltip />} />
+            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12} animationDuration={500}>
+              {itemData.map((entry, i) => <Cell key={i} fill={catColor(entry.category, i)} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      ) : <div className="h-48 bg-secondary/30 rounded-xl animate-pulse" />}
+      {itemData.length === 20 && <p className="text-xs text-muted-foreground mt-2 text-center">Showing top 20 items by weight</p>}
+    </div>
+  )
 
-          <div className="flex flex-col gap-2 w-full">
-            {categoryData.map(({ name, value, color }) => (
-              <div key={name} className="flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: color }} />
-                <span className="text-sm text-foreground flex-1 min-w-0">{name}</span>
-                <span className="text-sm font-semibold tabular-nums text-foreground">{value.toFixed(2)} lb</span>
-              </div>
-            ))}
-          </div>
+  const RatingChart = <ULGauge baseOz={baseOz} unit={unit} />
+
+  const CompareChart = mounted
+    ? <CompareTab items={includedItems} unit={unit} userId={userId} tripId={tripId} />
+    : <div className="h-48 bg-secondary/30 rounded-xl animate-pulse" />
+
+  return (
+    <motion.div {...fadeIn} className="mt-4">
+
+      {/* ── Desktop: 2×2 grid, no tabs ── */}
+      <div className="hidden lg:grid lg:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">Breakdown</p>
+          {BreakdownChart}
         </div>
-      )}
-
-      {/* ── By item (waterfall) ── */}
-      {tab === 'items' && (
-        <div>
-          {mounted ? (
-            <ResponsiveContainer width="100%" height={Math.max(180, itemData.length * 34)}>
-              <BarChart
-                layout="vertical"
-                data={itemData}
-                margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
-              >
-                <XAxis type="number" tick={{ fontSize: 10, fill: CHART_MUTED }} tickFormatter={v => `${v}lb`} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: CHART_MUTED }}
-                  width={130}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12} animationDuration={500}>
-                  {itemData.map((entry, i) => (
-                    <Cell key={i} fill={catColor(entry.category, i)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className="h-48 bg-secondary/30 rounded-xl animate-pulse" />}
-          {itemData.length === 20 && (
-            <p className="text-xs text-muted-foreground mt-2 text-center">Showing top 20 items by weight</p>
-          )}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">UL Rating</p>
+          {RatingChart}
         </div>
-      )}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">By item</p>
+          {ItemsChart}
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">Compare trips</p>
+          {CompareChart}
+        </div>
+      </div>
 
-      {/* ── UL Rating (gauge) ── */}
-      {tab === 'rating' && (
-        <ULGauge baseOz={baseOz} unit={unit} />
-      )}
-
-      {/* ── Compare ── */}
-      {tab === 'compare' && (
-        mounted
-          ? <CompareTab items={includedItems} unit={unit} userId={userId} tripId={tripId} />
-          : <div className="h-48 bg-secondary/30 rounded-xl animate-pulse" />
-      )}
+      {/* ── Tablet / mobile: tabs ── */}
+      <div className="lg:hidden bg-card border border-border rounded-2xl p-5">
+        <div className="flex items-center gap-1 mb-5 overflow-x-auto scrollbar-none">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all',
+                tab === t.id
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {tab === 'breakdown' && BreakdownChart}
+        {tab === 'items' && ItemsChart}
+        {tab === 'rating' && RatingChart}
+        {tab === 'compare' && CompareChart}
+      </div>
     </motion.div>
   )
 }

@@ -10,12 +10,12 @@ import { calculateWeightSummary } from '@/lib/calculations'
 import { cn } from '@/lib/utils'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
 
-type SortKey = 'updated_at' | 'created_at' | 'name' | 'weight'
+type SortKey = 'updated_at' | 'trip_date' | 'name' | 'weight'
 type SortDir = 'asc' | 'desc'
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'updated_at', label: 'Recent' },
-  { key: 'created_at', label: 'Created' },
+  { key: 'trip_date', label: 'Date' },
   { key: 'name', label: 'Name' },
   { key: 'weight', label: 'Weight' },
 ]
@@ -37,11 +37,19 @@ export function TripsClient({ trips }: Props) {
 
   const sorted = useMemo(() => {
     return [...activeTrips].sort((a, b) => {
+      // trip_date can be null — push nulls to the end regardless of sort direction
+      if (sortKey === 'trip_date') {
+        if (!a.trip_date && !b.trip_date) return 0
+        if (!a.trip_date) return 1
+        if (!b.trip_date) return -1
+        return sortDir === 'asc'
+          ? a.trip_date.localeCompare(b.trip_date)
+          : b.trip_date.localeCompare(a.trip_date)
+      }
       let vA: string | number = 0
       let vB: string | number = 0
       switch (sortKey) {
         case 'updated_at': vA = a.updated_at; vB = b.updated_at; break
-        case 'created_at': vA = a.created_at; vB = b.created_at; break
         case 'name':       vA = a.name.toLowerCase(); vB = b.name.toLowerCase(); break
         case 'weight':     vA = getWeight(a); vB = getWeight(b); break
       }
@@ -56,7 +64,7 @@ export function TripsClient({ trips }: Props) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
-      setSortDir(key === 'name' ? 'asc' : 'desc')
+      setSortDir(key === 'name' ? 'asc' : key === 'trip_date' ? 'desc' : 'desc')
     }
   }
 

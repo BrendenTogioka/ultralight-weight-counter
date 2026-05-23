@@ -124,6 +124,40 @@ export function TripChartsSection({ trips }: Props) {
     { key: 'trend', label: 'Weight trend', Icon: TrendingUp },
   ]
 
+  const CompareChart = mounted ? (
+    <div>
+      <p className="text-xs text-muted-foreground mb-4">Pack weight breakdown across all trips</p>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={compareData} margin={{ top: 0, right: 8, left: -16, bottom: 0 }}>
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} unit={` ${ul}`} />
+          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
+          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+          <Bar dataKey={`Base (${ul})`} stackId="a" fill={BAR_BASE} radius={[0, 0, 0, 0]} />
+          <Bar dataKey={`Worn (${ul})`} stackId="a" fill={BAR_WORN} />
+          <Bar dataKey={`Consumable (${ul})`} stackId="a" fill={BAR_CONSUMABLE} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  ) : <div className="h-52 flex items-center justify-center"><div className="h-4 w-4 border-2 border-muted-foreground/40 border-t-primary rounded-full animate-spin" /></div>
+
+  const TrendChart = mounted ? (
+    <div>
+      <p className="text-xs text-muted-foreground mb-4">Base and total weight across trips (chronological)</p>
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={trendData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
+          <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} unit={` ${ul}`} />
+          <Tooltip content={<ChartTooltip />} />
+          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+          <Line type="monotone" dataKey={`Base (${ul})`} stroke={LINE_COLOR} strokeWidth={2} dot={{ r: 4, fill: LINE_COLOR, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey={`Total (${ul})`} stroke={LINE_TOTAL} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 4, fill: LINE_TOTAL, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  ) : <div className="h-52 flex items-center justify-center"><div className="h-4 w-4 border-2 border-muted-foreground/40 border-t-primary rounded-full animate-spin" /></div>
+
   return (
     <motion.div
       variants={fadeIn}
@@ -131,14 +165,19 @@ export function TripChartsSection({ trips }: Props) {
       animate="animate"
       className="mt-10"
     >
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-          Trip analytics
-        </h2>
+      <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+        Trip analytics
+      </h2>
 
-        {/* Tabs */}
-        <div className="flex gap-1 bg-secondary/60 rounded-lg p-1">
+      {/* Desktop: both charts side by side */}
+      <div className="hidden lg:grid lg:grid-cols-2 gap-4">
+        <div className="border border-border rounded-2xl p-5 bg-card">{CompareChart}</div>
+        <div className="border border-border rounded-2xl p-5 bg-card">{TrendChart}</div>
+      </div>
+
+      {/* Tablet / mobile: tabs */}
+      <div className="lg:hidden">
+        <div className="flex gap-1 bg-secondary/60 rounded-lg p-1 w-fit mb-4">
           {TABS.map(({ key, label, Icon }) => (
             <button
               key={key}
@@ -155,66 +194,9 @@ export function TripChartsSection({ trips }: Props) {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Chart card */}
-      <div className="border border-border rounded-2xl p-5 bg-card">
-        {!mounted ? (
-          <div className="h-52 flex items-center justify-center">
-            <div className="h-4 w-4 border-2 border-muted-foreground/40 border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : tab === 'compare' ? (
-          // ── Stacked bar: base / worn / consumable per trip ───────────────
-          <div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Pack weight breakdown across all trips
-            </p>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={compareData} margin={{ top: 0, right: 8, left: -16, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} unit={` ${ul}`} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(128,128,128,0.06)' }} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                <Bar dataKey={`Base (${ul})`} stackId="a" fill={BAR_BASE} radius={[0, 0, 0, 0]} />
-                <Bar dataKey={`Worn (${ul})`} stackId="a" fill={BAR_WORN} />
-                <Bar dataKey={`Consumable (${ul})`} stackId="a" fill={BAR_CONSUMABLE} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          // ── Line chart: base + total weight over trips ───────────────────
-          <div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Base and total weight across trips (chronological)
-            </p>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={trendData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: CHART_MUTED }} axisLine={false} tickLine={false} unit={` ${ul}`} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                <Line
-                  type="monotone"
-                  dataKey={`Base (${ul})`}
-                  stroke={LINE_COLOR}
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: LINE_COLOR, strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey={`Total (${ul})`}
-                  stroke={LINE_TOTAL}
-                  strokeWidth={2}
-                  strokeDasharray="4 3"
-                  dot={{ r: 4, fill: LINE_TOTAL, strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <div className="border border-border rounded-2xl p-5 bg-card">
+          {tab === 'compare' ? CompareChart : TrendChart}
+        </div>
       </div>
     </motion.div>
   )

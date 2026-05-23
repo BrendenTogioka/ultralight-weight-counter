@@ -18,7 +18,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <UnitProvider defaultUnit={settings?.default_unit ?? 'oz'}>
-      <div className="flex h-screen bg-background overflow-hidden">
+      {/* h-dvh = dynamic viewport height — fixes iOS Safari URL-bar reflow */}
+      <div className="flex h-dvh bg-background overflow-hidden">
         <AppSidebar user={user} />
         <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
           {children}
