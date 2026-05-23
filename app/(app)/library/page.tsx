@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { GearLibraryClient } from '@/components/gear/GearLibraryClient'
 
 export default async function LibraryPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getUser(), createClient()])
 
   const [{ data: gearItems }, { data: gearTypes }, { data: kits }] = await Promise.all([
     supabase
@@ -16,9 +16,10 @@ export default async function LibraryPage() {
       .select('*')
       .or(`user_id.is.null,user_id.eq.${user!.id}`)
       .order('name'),
+    // Only select columns shown in the kit card — name, weight, quantity
     supabase
       .from('kits')
-      .select('*, kit_items(*, gear_item:gear_items(*))')
+      .select('*, kit_items(id, quantity, sort_order, gear_item:gear_items(id, name, weight_oz, weight_unit))')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false }),
   ])

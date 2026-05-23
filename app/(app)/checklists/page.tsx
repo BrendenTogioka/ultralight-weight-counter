@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import Link from 'next/link'
 import { ClipboardList, ArrowRight } from 'lucide-react'
 import type { Checklist } from '@/types'
 
 export default async function ChecklistsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getUser(), createClient()])
 
   const { data: checklists, error } = await supabase
     .from('checklists')

@@ -2,15 +2,26 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { X, Search, Plus, Loader2, Package } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import type { GearItem, GearType, Kit, TripItem, WearType, WeightUnit } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { formatWeight, toOz } from '@/lib/calculations'
 import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
-import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { motion } from 'framer-motion'
 import { backdropVariants, modalCardVariants } from '@/lib/motion'
 import { toast } from 'sonner'
+
+const AddEditGearModal = dynamic(() =>
+  import('@/components/gear/AddEditGearModal').then(m => ({ default: m.AddEditGearModal }))
+)
+
+// ─── Module-level cache ───────────────────────────────────────────────────────
+// The modal unmounts on close, so without this the gear library refetches every
+// time the user reopens it. The cache is keyed by userId and cleared when a new
+// item is created, keeping it consistent within a session.
+type GearCache = { userId: string; gear: GearItem[]; kits: Kit[] }
+let _gearCache: GearCache | null = null
 
 interface Props {
   tripId: string
@@ -42,6 +53,14 @@ export function AddItemToTripModal({
   const [showNewGearModal, setShowNewGearModal] = useState(false)
 
   useEffect(() => {
+    // Return cached data instantly — no spinner on repeat opens
+    if (_gearCache?.userId === userId) {
+      setGearLibrary(_gearCache.gear)
+      setKits(_gearCache.kits)
+      setLoading(false)
+      return
+    }
+
     async function load() {
       const supabase = createClient()
       const [{ data: gear }, { data: kitsData }] = await Promise.all([
@@ -52,8 +71,11 @@ export function AddItemToTripModal({
           .eq('user_id', userId)
           .order('name'),
       ])
-      setGearLibrary(gear ?? [])
-      setKits(kitsData ?? [])
+      const g = gear ?? []
+      const k = kitsData ?? []
+      _gearCache = { userId, gear: g, kits: k }
+      setGearLibrary(g)
+      setKits(k)
       setLoading(false)
     }
     load()
@@ -155,7 +177,12 @@ export function AddItemToTripModal({
   }
 
   function handleNewGearSaved(item: GearItem) {
-    setGearLibrary(prev => [item, ...prev])
+    setGearLibrary(prev => {
+      const next = [item, ...prev]
+      // Keep module cache in sync so re-opens reflect the new item
+      if (_gearCache?.userId === userId) _gearCache = { ..._gearCache, gear: next }
+      return next
+    })
     setSelected(item)
     setShowNewGearModal(false)
     setModalTab('gear')

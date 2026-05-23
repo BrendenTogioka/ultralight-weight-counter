@@ -4,11 +4,18 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Plus, Mountain, ArrowRight, Package } from 'lucide-react'
 import { motion } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import { TripCard } from '@/components/trips/TripCard'
-import { TripChartsSection } from '@/components/dashboard/TripChartsSection'
-import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import type { Trip, GearType } from '@/types'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
+
+const TripChartsSection = dynamic(
+  () => import('@/components/dashboard/TripChartsSection').then(m => ({ default: m.TripChartsSection })),
+  { ssr: false },
+)
+const AddEditGearModal = dynamic(() =>
+  import('@/components/gear/AddEditGearModal').then(m => ({ default: m.AddEditGearModal }))
+)
 
 const RECENT_LIMIT = 6
 

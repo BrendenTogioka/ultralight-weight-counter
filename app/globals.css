@@ -84,9 +84,14 @@
     font-variation-settings: normal;
   }
 
-  /* Inter number rendering — tabular for weights */
+  /* Tabular nums — use Inter's tnum feature; monospace via system stack */
   .tabular-nums {
     font-feature-settings: "tnum";
+  }
+
+  /* System monospace fallback now that JetBrains Mono is removed */
+  .font-mono, code, pre {
+    font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   }
 
   /* Smooth scrolling */

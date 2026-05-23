@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
 import type { Trip, GearType } from '@/types'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getUser(), createClient()])
 
   const [{ data: trips }, { data: gearTypes }] = await Promise.all([
     supabase

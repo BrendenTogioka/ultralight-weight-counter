@@ -9,6 +9,8 @@ import {
   Link2, Link2Off,
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -27,18 +29,40 @@ import {
 } from '@/lib/calculations'
 import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
-import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { TripItemDetailModal } from '@/components/trips/TripItemDetailModal'
 import { TripItemCard } from '@/components/trips/TripItemCard'
-import { EditTripModal } from '@/components/trips/EditTripModal'
-import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
-import { WeightCharts } from '@/components/trips/WeightCharts'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
+
+// ─── Lazy-loaded heavy components ─────────────────────────────────────────────
+// Only fetched when the user first triggers them — keeps the initial JS bundle
+// focused on what's needed to paint the trip list immediately.
+
+const WeightCharts = dynamic(
+  () => import('@/components/trips/WeightCharts').then(m => ({ default: m.WeightCharts })),
+  {
+    ssr: false,
+    loading: () => <div className="mt-4 h-48 bg-secondary/30 rounded-2xl animate-pulse" />,
+  },
+)
+
+const AddItemToTripModal = dynamic(() =>
+  import('@/components/trips/AddItemToTripModal').then(m => ({ default: m.AddItemToTripModal }))
+)
+const TripItemDetailModal = dynamic(() =>
+  import('@/components/trips/TripItemDetailModal').then(m => ({ default: m.TripItemDetailModal }))
+)
+const EditTripModal = dynamic(() =>
+  import('@/components/trips/EditTripModal').then(m => ({ default: m.EditTripModal }))
+)
+const AddEditGearModal = dynamic(() =>
+  import('@/components/gear/AddEditGearModal').then(m => ({ default: m.AddEditGearModal }))
+)
+const ConfirmDialog = dynamic(() =>
+  import('@/components/ui/ConfirmDialog').then(m => ({ default: m.ConfirmDialog }))
+)
 
 type WearFilter = 'all' | WearType
 type TripViewMode = 'list' | 'grid'
@@ -476,13 +500,16 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         </div>
       </div>
 
-      {/* Featured image hero */}
+      {/* Featured image hero — priority so it's the LCP element */}
       {trip.featured_image_url && (
         <div className="relative aspect-video w-full overflow-hidden rounded-2xl mb-6">
-          <img
+          <Image
             src={trip.featured_image_url}
             alt={trip.name}
-            className="w-full h-full object-cover"
+            fill
+            priority
+            sizes="(max-width: 896px) 100vw, 896px"
+            className="object-cover"
           />
         </div>
       )}

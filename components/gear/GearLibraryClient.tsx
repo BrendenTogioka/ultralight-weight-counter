@@ -2,21 +2,34 @@
 
 import { useState, useMemo } from 'react'
 import { Plus, Search, ArrowUpDown, LayoutGrid, List, Download, Upload, Pencil, Trash2, Package } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import type { GearItem, GearType, Kit, LibraryFilters, SortField } from '@/types'
 import { GEAR_CATEGORIES, cn } from '@/lib/utils'
 import { toOz, formatWeight } from '@/lib/calculations'
 import { GearItemCard } from '@/components/gear/GearItemCard'
 import { GearItemRow } from '@/components/gear/GearItemRow'
-import { GearDetailModal } from '@/components/gear/GearDetailModal'
-import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
-import { KitBuilderModal } from '@/components/gear/KitBuilderModal'
-import { GearImportModal } from '@/components/gear/GearImportModal'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { motion } from 'framer-motion'
 import { pageVariants } from '@/lib/motion'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useUnit } from '@/components/providers/UnitProvider'
+
+// ─── Lazy-loaded modals — only bundled when first opened ──────────────────────
+const GearDetailModal = dynamic(() =>
+  import('@/components/gear/GearDetailModal').then(m => ({ default: m.GearDetailModal }))
+)
+const AddEditGearModal = dynamic(() =>
+  import('@/components/gear/AddEditGearModal').then(m => ({ default: m.AddEditGearModal }))
+)
+const KitBuilderModal = dynamic(() =>
+  import('@/components/gear/KitBuilderModal').then(m => ({ default: m.KitBuilderModal }))
+)
+const GearImportModal = dynamic(() =>
+  import('@/components/gear/GearImportModal').then(m => ({ default: m.GearImportModal }))
+)
+const ConfirmDialog = dynamic(() =>
+  import('@/components/ui/ConfirmDialog').then(m => ({ default: m.ConfirmDialog }))
+)
 
 type ViewMode = 'grid' | 'list'
 type LibraryTab = 'items' | 'kits'

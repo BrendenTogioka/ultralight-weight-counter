@@ -1,11 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { TripDetailClient } from '@/components/trips/TripDetailClient'
 
 export default async function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [{ id }, user, supabase] = await Promise.all([params, getUser(), createClient()])
 
   const [{ data: trip }, { data: gearTypes }] = await Promise.all([
     supabase

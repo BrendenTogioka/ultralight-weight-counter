@@ -15,7 +15,7 @@ export const pageVariants: Variants = {
 export const staggerContainer: Variants = {
   initial: {},
   animate: {
-    transition: { staggerChildren: 0.055 },
+    transition: { staggerChildren: 0.03 },
   },
 }
 

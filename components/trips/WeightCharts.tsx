@@ -160,8 +160,8 @@ function ULGauge({ baseOz, unit }: { baseOz: number; unit: WeightUnit }) {
 interface CompareRow { category: string; current: number; average: number }
 
 function CompareTab({
-  items, unit, userId, tripId,
-}: { items: TripItem[]; unit: WeightUnit; userId: string; tripId: string }) {
+  items, unit, userId, tripId, isActive,
+}: { items: TripItem[]; unit: WeightUnit; userId: string; tripId: string; isActive: boolean }) {
   const [data, setData] = useState<CompareRow[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [tripCount, setTripCount] = useState(0)
@@ -204,8 +204,13 @@ function CompareTab({
     setLoading(false)
   }
 
-  // Lazy-load when tab first becomes visible
-  useEffect(() => { load() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  // Only fetch when this tab is actually visible — avoids a background query
+  // on every trip page load (desktop always showed all tabs simultaneously).
+  useEffect(() => {
+    if (!isActive) return
+    const timer = setTimeout(() => load(), 150)
+    return () => clearTimeout(timer)
+  }, [isActive])  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -353,8 +358,10 @@ export function WeightCharts({ items, unit, userId, tripId }: Props) {
 
   const RatingChart = <ULGauge baseOz={baseOz} unit={unit} />
 
-  const CompareChart = mounted
-    ? <CompareTab items={includedItems} unit={unit} userId={userId} tripId={tripId} />
+  // Desktop always shows compare; mobile only shows it when tab is selected.
+  // isActive controls whether CompareTab fires its Supabase query.
+  const makeCompareChart = (isActive: boolean) => mounted
+    ? <CompareTab items={includedItems} unit={unit} userId={userId} tripId={tripId} isActive={isActive} />
     : <div className="h-48 bg-secondary/30 rounded-xl animate-pulse" />
 
   return (
@@ -376,7 +383,8 @@ export function WeightCharts({ items, unit, userId, tripId }: Props) {
         </div>
         <div className="bg-card border border-border rounded-2xl p-5">
           <p className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">Compare trips</p>
-          {CompareChart}
+          {/* Desktop is always visible — pass isActive=true so data loads */}
+          {makeCompareChart(true)}
         </div>
       </div>
 
@@ -401,7 +409,8 @@ export function WeightCharts({ items, unit, userId, tripId }: Props) {
         {tab === 'breakdown' && BreakdownChart}
         {tab === 'items' && ItemsChart}
         {tab === 'rating' && RatingChart}
-        {tab === 'compare' && CompareChart}
+        {/* Only mounts when the tab is selected — data fetch fires on mount */}
+        {tab === 'compare' && makeCompareChart(true)}
       </div>
     </motion.div>
   )

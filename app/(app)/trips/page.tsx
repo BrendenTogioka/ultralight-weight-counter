@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { TripsClient } from '@/components/trips/TripsClient'
 import type { Trip } from '@/types'
 
 export default async function TripsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getUser(), createClient()])
 
   const { data: trips } = await supabase
     .from('trips')
