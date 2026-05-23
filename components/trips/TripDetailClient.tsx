@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, ClipboardList,
   MoreHorizontal, Copy, GripVertical, List, LayoutGrid,
 } from 'lucide-react'
+// Trash2 kept — used in TripItemDetailModal (remove from trip) and handleDeleteTrip
 import Link from 'next/link'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
@@ -19,7 +20,7 @@ import {
   useSortable, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Trip, TripItem, GearType, WearType, WeightUnit } from '@/types'
+import type { Trip, TripItem, GearItem, GearType, WearType, WeightUnit } from '@/types'
 import {
   calculateWeightSummary, calculateCategoryWeights,
   formatWeight, formatWeightDisplay, getEffectiveWeightOz,
@@ -30,6 +31,7 @@ import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
 import { TripItemDetailModal } from '@/components/trips/TripItemDetailModal'
 import { TripItemCard } from '@/components/trips/TripItemCard'
 import { EditTripModal } from '@/components/trips/EditTripModal'
+import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
 import { WeightCharts } from '@/components/trips/WeightCharts'
 import { createClient } from '@/lib/supabase/client'
@@ -53,10 +55,9 @@ interface SortableItemProps {
   isLast: boolean
   unit: WeightUnit
   onSelect: () => void
-  onRemove: () => void
 }
 
-function SortableTripItem({ item, isLast, unit, onSelect, onRemove }: SortableItemProps) {
+function SortableTripItem({ item, isLast, unit, onSelect }: SortableItemProps) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -75,15 +76,17 @@ function SortableTripItem({ item, isLast, unit, onSelect, onRemove }: SortableIt
     <div
       ref={setNodeRef}
       style={style}
+      onClick={onSelect}
       className={cn(
-        'px-4 py-3 group hover:bg-secondary/20 transition-colors',
+        'px-4 py-3 hover:bg-secondary/20 transition-colors cursor-pointer',
         !isLast && 'border-b border-border',
         isDragging && 'opacity-50 bg-secondary/30 relative z-10',
       )}
     >
       <div className="flex items-center gap-2">
-        {/* Drag handle */}
+        {/* Drag handle — stop propagation so dragging doesn't open modal */}
         <button
+          onClick={e => e.stopPropagation()}
           {...attributes}
           {...listeners}
           aria-label="Drag to reorder"
@@ -93,14 +96,12 @@ function SortableTripItem({ item, isLast, unit, onSelect, onRemove }: SortableIt
         </button>
 
         {/* Name + brand */}
-        <button onClick={onSelect} className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-medium leading-tight hover:text-primary transition-colors">
-            {gear.name}
-          </p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium leading-tight">{gear.name}</p>
           {gear.brand && (
             <p className="text-xs text-muted-foreground leading-tight">{gear.brand}</p>
           )}
-        </button>
+        </div>
 
         {/* Weight */}
         <div className="text-right shrink-0">
@@ -113,15 +114,6 @@ function SortableTripItem({ item, isLast, unit, onSelect, onRemove }: SortableIt
             </p>
           )}
         </div>
-
-        {/* Remove */}
-        <button
-          onClick={onRemove}
-          aria-label={`Remove ${gear.name} from trip`}
-          className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1 rounded"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
       </div>
 
       {/* Wear type + qty badge */}
@@ -144,6 +136,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditTrip, setShowEditTrip] = useState(false)
   const [selectedItem, setSelectedItem] = useState<TripItem | null>(null)
+  const [editingGearItem, setEditingGearItem] = useState<GearItem | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [wearFilter, setWearFilter] = useState<WearFilter>('all')
   const [tripViewMode, setTripViewMode] = useState<TripViewMode>(() => {
@@ -222,6 +215,17 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       ...prev,
       trip_items: prev.trip_items?.map(i => i.id === updated.id ? updated : i),
     }))
+  }
+
+  function handleGearItemSaved(savedGear: GearItem) {
+    // Update gear_item on every trip_item that references this gear
+    setTrip(prev => ({
+      ...prev,
+      trip_items: prev.trip_items?.map(i =>
+        i.gear_item_id === savedGear.id ? { ...i, gear_item: savedGear } : i
+      ),
+    }))
+    setEditingGearItem(null)
   }
 
   function handleItemAdded(newItem: TripItem) {
@@ -579,15 +583,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                         isLast={idx === catItems.length - 1}
                         unit={unit}
                         onSelect={() => setSelectedItem(item)}
-                        onRemove={() => {
-                          if (!confirm(`Remove "${item.gear_item?.name}" from trip?`)) return
-                          const supabase = createClient()
-                          supabase.from('trip_items').delete().eq('id', item.id).then(({ error }) => {
-                            if (error) return toast.error('Failed to remove item')
-                            handleRemoveItem(item.id)
-                            toast.success('Item removed')
-                          })
-                        }}
                       />
                     ))}
                   </SortableContext>
@@ -623,12 +618,26 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         />
       )}
 
-      {selectedItem && (
+      {selectedItem && !editingGearItem && (
         <TripItemDetailModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onUpdated={updated => { handleItemUpdated(updated); setSelectedItem(null) }}
           onRemoved={id => { handleRemoveItem(id); setSelectedItem(null) }}
+          onEditGear={() => {
+            setEditingGearItem(selectedItem.gear_item!)
+            setSelectedItem(null)
+          }}
+        />
+      )}
+
+      {editingGearItem && (
+        <AddEditGearModal
+          item={editingGearItem}
+          gearTypes={gearTypes}
+          userId={userId}
+          onClose={() => setEditingGearItem(null)}
+          onSaved={(saved) => handleGearItemSaved(saved)}
         />
       )}
 

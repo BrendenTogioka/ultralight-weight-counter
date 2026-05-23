@@ -28,6 +28,7 @@ export function AddItemToTripModal({
   const [tab, setTab] = useState<'search' | 'new'>('search')
   const [gearLibrary, setGearLibrary] = useState<GearItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [inputValue, setInputValue] = useState('')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<GearItem | null>(null)
   const [quantity, setQuantity] = useState(1)
@@ -48,6 +49,12 @@ export function AddItemToTripModal({
     }
     load()
   }, [userId])
+
+  // Debounce search input by 300 ms
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(inputValue), 300)
+    return () => clearTimeout(t)
+  }, [inputValue])
 
   const filtered = useMemo(() => {
     return gearLibrary.filter(item => {
@@ -142,8 +149,8 @@ export function AddItemToTripModal({
               autoFocus
               type="text"
               placeholder="Search your gear library…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -158,7 +165,7 @@ export function AddItemToTripModal({
           ) : filtered.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-sm text-muted-foreground mb-3">
-                {search ? `No gear matching "${search}"` : 'All library items are already in this trip'}
+                {inputValue ? `No gear matching "${inputValue}"` : 'All library items are already in this trip'}
               </p>
               <button
                 onClick={() => setShowNewGearModal(true)}

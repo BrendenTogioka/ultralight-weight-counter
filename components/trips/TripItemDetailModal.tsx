@@ -1,24 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Trash2 } from 'lucide-react'
-import Image from 'next/image'
+import { X, Trash2, Pencil } from 'lucide-react'
 import type { TripItem, WearType } from '@/types'
 import { getEffectiveWeightOz, formatWeight } from '@/lib/calculations'
 import { CATEGORY_ICONS } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { backdropVariants, modalCardVariants, mobileSheetVariants } from '@/lib/motion'
+import { backdropVariants, modalCardVariants } from '@/lib/motion'
 
 interface Props {
   item: TripItem
   onClose: () => void
   onUpdated: (item: TripItem) => void
   onRemoved: (id: string) => void
+  onEditGear?: () => void
 }
 
-export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Props) {
+export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEditGear }: Props) {
   const gear = item.gear_item!
   const [wearType, setWearType] = useState<WearType>(item.wear_type)
   const [quantity, setQuantity] = useState(item.quantity)
@@ -83,34 +83,28 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Pro
         </div>
 
         <div className="px-5 py-4 flex flex-col gap-4">
-          {/* Image + basic info */}
-          <div className="flex gap-3 items-start">
-            {gear.image_url ? (
-              <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-secondary">
-                <Image src={gear.image_url} alt={gear.name} width={64} height={64} className="object-cover w-full h-full" />
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                <span className="text-2xl">{CATEGORY_ICONS[gear.category] ?? '📦'}</span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
+          {/* Image + basic info — image takes ~45% width */}
+          <div className="flex gap-4 items-start">
+            <div className="w-[45%] aspect-square rounded-xl overflow-hidden shrink-0 bg-secondary flex items-center justify-center">
+              {gear.image_url ? (
+                <img src={gear.image_url} alt={gear.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">{CATEGORY_ICONS[gear.category] ?? '📦'}</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
               {gear.brand && <p className="text-sm text-muted-foreground">{gear.brand}</p>}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {gear.category}{gear.type ? ` · ${gear.type}` : ''}
               </p>
-              <p className="text-sm font-semibold text-foreground mt-1.5 tabular-nums">
+              <p className="text-sm font-semibold text-foreground mt-2 tabular-nums">
                 {formatWeight(weightOz, 'oz', 1)} each
               </p>
+              {gear.notes && (
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{gear.notes}</p>
+              )}
             </div>
           </div>
-
-          {/* Gear notes */}
-          {gear.notes && (
-            <div className="bg-secondary/50 rounded-lg px-3 py-2.5">
-              <p className="text-xs text-muted-foreground leading-relaxed">{gear.notes}</p>
-            </div>
-          )}
 
           {/* Wear type */}
           <div>
@@ -168,6 +162,16 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved }: Pro
           >
             <Trash2 className="h-4 w-4" />
           </button>
+          {onEditGear && (
+            <button
+              onClick={onEditGear}
+              aria-label="Edit gear item"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit gear
+            </button>
+          )}
           <div className="flex-1" />
           <button
             onClick={onClose}
