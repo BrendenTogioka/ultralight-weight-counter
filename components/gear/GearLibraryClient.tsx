@@ -11,6 +11,7 @@ import { GearDetailModal } from '@/components/gear/GearDetailModal'
 import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { KitBuilderModal } from '@/components/gear/KitBuilderModal'
 import { GearImportModal } from '@/components/gear/GearImportModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { motion } from 'framer-motion'
 import { pageVariants } from '@/lib/motion'
 import { createClient } from '@/lib/supabase/client'
@@ -43,6 +44,7 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingKit, setEditingKit] = useState<Kit | null | undefined>(undefined) // undefined = closed
   const [showImportModal, setShowImportModal] = useState(false)
+  const [kitToDelete, setKitToDelete] = useState<Kit | null>(null)
   const [filters, setFilters] = useState<LibraryFilters>({
     search: '',
     category: '',
@@ -144,7 +146,6 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
   }
 
   async function handleDeleteKit(kit: Kit) {
-    if (!confirm(`Delete kit "${kit.name}"? This cannot be undone.`)) return
     const supabase = createClient()
     const { error } = await supabase.from('kits').delete().eq('id', kit.id)
     if (error) { toast.error('Failed to delete kit'); return }
@@ -426,7 +427,7 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteKit(kit)}
+                          onClick={() => setKitToDelete(kit)}
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                           aria-label="Delete kit"
                         >
@@ -493,6 +494,17 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
           gearTypes={gearTypes}
           onClose={() => setEditingKit(undefined)}
           onSaved={handleKitSaved}
+        />
+      )}
+
+      {/* Delete kit confirmation */}
+      {kitToDelete && (
+        <ConfirmDialog
+          title="Delete kit?"
+          message={`"${kitToDelete.name}" will be permanently deleted.`}
+          confirmLabel="Delete"
+          onConfirm={() => { const k = kitToDelete; setKitToDelete(null); handleDeleteKit(k) }}
+          onCancel={() => setKitToDelete(null)}
         />
       )}
 

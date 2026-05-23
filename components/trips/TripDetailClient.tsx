@@ -28,6 +28,7 @@ import {
 import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { AddItemToTripModal } from '@/components/trips/AddItemToTripModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { TripItemDetailModal } from '@/components/trips/TripItemDetailModal'
 import { TripItemCard } from '@/components/trips/TripItemCard'
 import { EditTripModal } from '@/components/trips/EditTripModal'
@@ -140,6 +141,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const [editingGearItem, setEditingGearItem] = useState<GearItem | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [wearFilter, setWearFilter] = useState<WearFilter>('all')
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [tripViewMode, setTripViewMode] = useState<TripViewMode>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('trip_item_view') as TripViewMode) ?? 'list'
@@ -260,7 +262,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   }
 
   async function handleDeleteTrip() {
-    if (!confirm(`Delete trip "${trip.name}"? This cannot be undone.`)) return
     const supabase = createClient()
     const { error } = await supabase.from('trips').delete().eq('id', trip.id)
     if (error) return toast.error('Failed to delete trip')
@@ -463,7 +464,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="h-px bg-border my-1 -mx-1" />
                 <DropdownMenu.Item
-                  onSelect={handleDeleteTrip}
+                  onSelect={() => setConfirmDelete(true)}
                   className="flex items-center gap-2.5 px-3 py-2 text-sm text-destructive rounded-lg hover:bg-destructive/10 cursor-pointer outline-none select-none"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -683,6 +684,16 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           trip={trip}
           onClose={() => setShowEditTrip(false)}
           onSaved={updated => { setTrip(prev => ({ ...prev, ...updated })); setShowEditTrip(false) }}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete trip?"
+          message={`"${trip.name}" and all its items will be permanently deleted.`}
+          confirmLabel="Delete"
+          onConfirm={() => { setConfirmDelete(false); handleDeleteTrip() }}
+          onCancel={() => setConfirmDelete(false)}
         />
       )}
     </motion.div>

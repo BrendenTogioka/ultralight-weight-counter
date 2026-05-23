@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { backdropVariants, modalCardVariants } from '@/lib/motion'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface TripRef { id: string; name: string }
 
@@ -25,6 +26,7 @@ export function GearDetailModal({ item, onClose, onEdit, onDeleted }: Props) {
   const { unit } = useUnit()
   const weightOz = toOz(item.weight_oz, item.weight_unit)
   const [trips, setTrips] = useState<TripRef[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -47,7 +49,6 @@ export function GearDetailModal({ item, onClose, onEdit, onDeleted }: Props) {
   }, [item.id])
 
   async function handleDelete() {
-    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return
     const supabase = createClient()
     const { error } = await supabase.from('gear_items').delete().eq('id', item.id)
     if (error) { toast.error('Failed to delete'); return }
@@ -131,7 +132,7 @@ export function GearDetailModal({ item, onClose, onEdit, onDeleted }: Props) {
           {/* Actions */}
           <div className="flex gap-3 pt-1 border-t border-border">
             <button
-              onClick={handleDelete}
+              onClick={() => setConfirmOpen(true)}
               className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
@@ -147,6 +148,16 @@ export function GearDetailModal({ item, onClose, onEdit, onDeleted }: Props) {
           </div>
         </div>
       </motion.div>
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Delete gear item?"
+          message={`"${item.name}" will be permanently deleted and removed from any trips it's in.`}
+          confirmLabel="Delete"
+          onConfirm={() => { setConfirmOpen(false); handleDelete() }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
     </div>
   )
 }

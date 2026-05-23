@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { pageVariants, staggerContainer, staggerItem } from '@/lib/motion'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Props {
   checklist: Checklist
@@ -34,6 +35,7 @@ export function ChecklistClient({ checklist: initial }: Props) {
   const [newItemBrand, setNewItemBrand] = useState('')
   const [duplicating, setDuplicating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const checked = items.filter(i => i.checked).length
   const total = items.length
@@ -150,7 +152,6 @@ export function ChecklistClient({ checklist: initial }: Props) {
 
   // ── Delete checklist ─────────────────────────────────────────
   async function handleDelete() {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
     const supabase = createClient()
     const { error } = await supabase.from('checklists').delete().eq('id', initial.id)
     if (error) { toast.error('Failed to delete'); return }
@@ -254,6 +255,7 @@ export function ChecklistClient({ checklist: initial }: Props) {
   }
 
   return (
+    <>
     <motion.div
       variants={pageVariants}
       initial="initial"
@@ -378,7 +380,7 @@ export function ChecklistClient({ checklist: initial }: Props) {
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="h-px bg-border my-1 -mx-1" />
                 <DropdownMenu.Item
-                  onSelect={handleDelete}
+                  onSelect={() => setConfirmDelete(true)}
                   className="flex items-center gap-2.5 px-3 py-2 text-sm text-destructive rounded-lg hover:bg-destructive/10 cursor-pointer outline-none select-none"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -528,5 +530,16 @@ export function ChecklistClient({ checklist: initial }: Props) {
         />
       </div>
     </motion.div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Delete checklist?"
+        message={`"${name}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { setConfirmDelete(false); handleDelete() }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    )}
+    </>
   )
 }

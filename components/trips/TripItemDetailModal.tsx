@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { backdropVariants, modalCardVariants } from '@/lib/motion'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Props {
   item: TripItem
@@ -26,6 +27,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
 
   const weightOz = getEffectiveWeightOz(item)
   const totalOz = weightOz * quantity
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   async function handleSave() {
     if (wearType === item.wear_type && quantity === item.quantity) {
@@ -50,7 +52,6 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
   }
 
   async function handleRemove() {
-    if (!confirm(`Remove "${gear.name}" from this trip?`)) return
     const supabase = createClient()
     const { error } = await supabase.from('trip_items').delete().eq('id', item.id)
     if (error) { toast.error('Failed to remove item'); return }
@@ -156,7 +157,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
         {/* Footer */}
         <div className="flex items-center gap-2 px-5 py-4 border-t border-border">
           <button
-            onClick={handleRemove}
+            onClick={() => setConfirmOpen(true)}
             aria-label="Remove from trip"
             className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
           >
@@ -188,6 +189,16 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
           </button>
         </div>
       </motion.div>
+
+      {confirmOpen && (
+        <ConfirmDialog
+          title="Remove item?"
+          message={`Remove "${gear.name}" from this trip?`}
+          confirmLabel="Remove"
+          onConfirm={() => { setConfirmOpen(false); handleRemove() }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
     </div>
   )
 }
