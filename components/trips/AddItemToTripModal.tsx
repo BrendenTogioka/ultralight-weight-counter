@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Search, Plus, Loader2 } from 'lucide-react'
-import type { GearItem, GearType, TripItem, WearType, WeightUnit } from '@/types'
+import { X, Search, Plus, Loader2, Package } from 'lucide-react'
+import type { GearItem, GearType, Kit, TripItem, WearType, WeightUnit } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { formatWeight, toOz } from '@/lib/calculations'
-import { CATEGORY_ICONS, GEAR_CATEGORIES, cn } from '@/lib/utils'
+import { CATEGORY_ICONS, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
 import { motion } from 'framer-motion'
@@ -19,14 +19,18 @@ interface Props {
   existingGearIds: string[]
   onClose: () => void
   onItemAdded: (item: TripItem) => void
+  onItemsAdded?: (items: TripItem[]) => void
 }
 
+type ModalTab = 'gear' | 'kits'
+
 export function AddItemToTripModal({
-  tripId, userId, gearTypes, existingGearIds, onClose, onItemAdded,
+  tripId, userId, gearTypes, existingGearIds, onClose, onItemAdded, onItemsAdded,
 }: Props) {
   const { unit } = useUnit()
-  const [tab, setTab] = useState<'search' | 'new'>('search')
+  const [modalTab, setModalTab] = useState<ModalTab>('gear')
   const [gearLibrary, setGearLibrary] = useState<GearItem[]>([])
+  const [kits, setKits] = useState<Kit[]>([])
   const [loading, setLoading] = useState(true)
   const [inputValue, setInputValue] = useState('')
   const [search, setSearch] = useState('')
@@ -34,17 +38,22 @@ export function AddItemToTripModal({
   const [quantity, setQuantity] = useState(1)
   const [wearType, setWearType] = useState<WearType>('base')
   const [adding, setAdding] = useState(false)
+  const [addingKitId, setAddingKitId] = useState<string | null>(null)
   const [showNewGearModal, setShowNewGearModal] = useState(false)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('gear_items')
-        .select('*')
-        .eq('user_id', userId)
-        .order('name')
-      setGearLibrary(data ?? [])
+      const [{ data: gear }, { data: kitsData }] = await Promise.all([
+        supabase.from('gear_items').select('*').eq('user_id', userId).order('name'),
+        supabase
+          .from('kits')
+          .select('*, kit_items(*, gear_item:gear_items(*))')
+          .eq('user_id', userId)
+          .order('name'),
+      ])
+      setGearLibrary(gear ?? [])
+      setKits(kitsData ?? [])
       setLoading(false)
     }
     load()
@@ -100,11 +109,56 @@ export function AddItemToTripModal({
     onClose()
   }
 
+  async function handleAddKit(kit: Kit) {
+    const kitItems = kit.kit_items ?? []
+    const newItems = kitItems.filter(ki => !existingGearIds.includes(ki.gear_item_id))
+    if (newItems.length === 0) {
+      toast.info('All items in this kit are already in the trip')
+      return
+    }
+
+    setAddingKitId(kit.id)
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('trip_items')
+      .insert(
+        newItems.map((ki, idx) => ({
+          trip_id: tripId,
+          gear_item_id: ki.gear_item_id,
+          user_id: userId,
+          quantity: ki.quantity,
+          wear_type: ki.wear_type,
+          included: true,
+          sort_order: existingGearIds.length + idx,
+        }))
+      )
+      .select(`*, gear_item:gear_items(*)`)
+
+    setAddingKitId(null)
+
+    if (error) {
+      toast.error('Failed to add kit items')
+      return
+    }
+
+    const added = data as TripItem[]
+    toast.success(`Added ${added.length} item${added.length !== 1 ? 's' : ''} from "${kit.name}"`)
+
+    if (onItemsAdded) {
+      onItemsAdded(added)
+    } else {
+      // Fall back: add one by one
+      added.forEach(item => onItemAdded(item))
+    }
+    onClose()
+  }
+
   function handleNewGearSaved(item: GearItem) {
     setGearLibrary(prev => [item, ...prev])
     setSelected(item)
     setShowNewGearModal(false)
-    setTab('search')
+    setModalTab('gear')
   }
 
   if (showNewGearModal) {
@@ -141,140 +195,204 @@ export function AddItemToTripModal({
           </button>
         </div>
 
-        {/* Search */}
-        <div className="px-6 py-4 border-b border-border shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search your gear library…"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        </div>
-
-        {/* Gear list */}
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-sm text-muted-foreground mb-3">
-                {inputValue ? `No gear matching "${inputValue}"` : 'All library items are already in this trip'}
-              </p>
-              <button
-                onClick={() => setShowNewGearModal(true)}
-                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80"
-              >
-                <Plus className="h-4 w-4" />
-                Add new gear item
-              </button>
-            </div>
-          ) : (
-            filtered.map(item => {
-              const weightOz = toOz(item.weight_oz, item.weight_unit)
-              const isSelected = selected?.id === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setSelected(isSelected ? null : item)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors mb-0.5',
-                    isSelected
-                      ? 'bg-accent'
-                      : 'hover:bg-secondary/60'
-                  )}
-                >
-                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-lg">
-                    {CATEGORY_ICONS[item.category] ?? '📦'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[item.brand, item.category, item.type].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <span className="text-sm font-medium text-foreground tabular-nums shrink-0">
-                    {formatWeight(weightOz, unit, 1)}
-                  </span>
-                </button>
-              )
-            })
-          )}
-        </div>
-
-        {/* Add new gear link */}
-        {!loading && filtered.length > 0 && (
-          <div className="px-6 py-2 border-t border-border shrink-0">
+        {/* Tab switcher */}
+        <div className="flex border-b border-border shrink-0">
+          {(['gear', 'kits'] as ModalTab[]).map(t => (
             <button
-              onClick={() => setShowNewGearModal(true)}
-              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1.5"
+              key={t}
+              onClick={() => { setModalTab(t); setSelected(null) }}
+              className={cn(
+                'flex-1 py-3 text-sm font-medium transition-colors capitalize',
+                modalTab === t
+                  ? 'text-foreground border-b-2 border-primary -mb-px'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add new gear item to library
+              {t === 'gear' ? 'Gear' : 'Kits'}
             </button>
-          </div>
-        )}
+          ))}
+        </div>
 
-        {/* Selected item config + add button */}
-        {selected && (
-          <div className="px-6 py-4 border-t border-border bg-secondary/20 shrink-0 flex flex-col gap-3">
-            <p className="text-sm font-medium text-foreground">{selected.name}</p>
-            <div className="flex items-center gap-4">
-              {/* Wear type */}
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground block mb-1">Type</label>
-                <select
-                  value={wearType}
-                  onChange={e => setWearType(e.target.value as WearType)}
-                  className="w-full text-sm border border-input rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="base">Base weight</option>
-                  <option value="worn">Worn</option>
-                  <option value="consumable">Consumable</option>
-                </select>
+        {/* Gear tab */}
+        {modalTab === 'gear' && (
+          <>
+            {/* Search */}
+            <div className="px-6 py-4 border-b border-border shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search your gear library…"
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
               </div>
+            </div>
 
-              {/* Quantity */}
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Qty</label>
-                <div className="flex items-center gap-1.5">
+            {/* Gear list */}
+            <div className="flex-1 overflow-y-auto px-3 py-2">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {inputValue ? `No gear matching "${inputValue}"` : 'All library items are already in this trip'}
+                  </p>
                   <button
-                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="w-8 h-9 rounded-lg border border-input text-sm hover:bg-secondary transition-colors"
+                    onClick={() => setShowNewGearModal(true)}
+                    className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80"
                   >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    value={quantity}
-                    onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-12 text-center text-sm border border-input rounded-lg px-2 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <button
-                    onClick={() => setQuantity(q => q + 1)}
-                    className="w-8 h-9 rounded-lg border border-input text-sm hover:bg-secondary transition-colors"
-                  >
-                    +
+                    <Plus className="h-4 w-4" />
+                    Add new gear item
                   </button>
                 </div>
-              </div>
+              ) : (
+                filtered.map(item => {
+                  const weightOz = toOz(item.weight_oz, item.weight_unit)
+                  const isSelected = selected?.id === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelected(isSelected ? null : item)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors mb-0.5',
+                        isSelected ? 'bg-accent' : 'hover:bg-secondary/60'
+                      )}
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 text-lg">
+                        {CATEGORY_ICONS[item.category] ?? '📦'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[item.brand, item.category, item.type].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <span className="text-sm font-medium text-foreground tabular-nums shrink-0">
+                        {formatWeight(weightOz, unit, 1)}
+                      </span>
+                    </button>
+                  )
+                })
+              )}
             </div>
 
-            <button
-              onClick={handleAdd}
-              disabled={adding}
-              className="w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {adding && <Loader2 className="h-4 w-4 animate-spin" />}
-              Add to trip
-            </button>
+            {/* Add new gear link */}
+            {!loading && filtered.length > 0 && (
+              <div className="px-6 py-2 border-t border-border shrink-0">
+                <button
+                  onClick={() => setShowNewGearModal(true)}
+                  className="text-sm text-primary hover:text-primary/80 flex items-center gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add new gear item to library
+                </button>
+              </div>
+            )}
+
+            {/* Selected item config + add button */}
+            {selected && (
+              <div className="px-6 py-4 border-t border-border bg-secondary/20 shrink-0 flex flex-col gap-3">
+                <p className="text-sm font-medium text-foreground">{selected.name}</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground block mb-1">Type</label>
+                    <select
+                      value={wearType}
+                      onChange={e => setWearType(e.target.value as WearType)}
+                      className="w-full text-sm border border-input rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="base">Base weight</option>
+                      <option value="worn">Worn</option>
+                      <option value="consumable">Consumable</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Qty</label>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        className="w-8 h-9 rounded-lg border border-input text-sm hover:bg-secondary transition-colors">−</button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={quantity}
+                        onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-12 text-center text-sm border border-input rounded-lg px-2 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button onClick={() => setQuantity(q => q + 1)}
+                        className="w-8 h-9 rounded-lg border border-input text-sm hover:bg-secondary transition-colors">+</button>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAdd}
+                  disabled={adding}
+                  className="w-full btn-primary py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {adding && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Add to trip
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Kits tab */}
+        {modalTab === 'kits' && (
+          <div className="flex-1 overflow-y-auto px-3 py-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : kits.length === 0 ? (
+              <div className="text-center py-10">
+                <Package className="h-8 w-8 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-sm text-muted-foreground mb-1">No kits yet</p>
+                <p className="text-xs text-muted-foreground">Create kits in your Gear Library.</p>
+              </div>
+            ) : (
+              kits.map(kit => {
+                const kitItems = kit.kit_items ?? []
+                const newItems = kitItems.filter(ki => !existingGearIds.includes(ki.gear_item_id))
+                const totalOz = kitItems.reduce((sum, ki) => {
+                  const oz = ki.gear_item ? toOz(ki.gear_item.weight_oz, ki.gear_item.weight_unit) * ki.quantity : 0
+                  return sum + oz
+                }, 0)
+                const isAdding = addingKitId === kit.id
+                return (
+                  <div key={kit.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-secondary/40 transition-colors mb-0.5">
+                    <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{kit.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {kitItems.length} item{kitItems.length !== 1 ? 's' : ''}
+                        {newItems.length < kitItems.length && ` · ${kitItems.length - newItems.length} already added`}
+                        {' · '}{formatWeight(totalOz, unit, 1)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleAddKit(kit)}
+                      disabled={isAdding || newItems.length === 0}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0',
+                        newItems.length === 0
+                          ? 'text-muted-foreground cursor-not-allowed'
+                          : 'btn-primary'
+                      )}
+                    >
+                      {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      {newItems.length === 0 ? 'All added' : `Add ${newItems.length}`}
+                    </button>
+                  </div>
+                )
+              })
+            )}
           </div>
         )}
       </motion.div>

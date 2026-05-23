@@ -5,7 +5,7 @@ export default async function LibraryPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: gearItems }, { data: gearTypes }, { data: settings }] = await Promise.all([
+  const [{ data: gearItems }, { data: gearTypes }, { data: kits }] = await Promise.all([
     supabase
       .from('gear_items')
       .select('*')
@@ -17,15 +17,16 @@ export default async function LibraryPage() {
       .or(`user_id.is.null,user_id.eq.${user!.id}`)
       .order('name'),
     supabase
-      .from('user_settings')
-      .select('default_unit')
+      .from('kits')
+      .select('*, kit_items(*, gear_item:gear_items(*))')
       .eq('user_id', user!.id)
-      .single(),
+      .order('created_at', { ascending: false }),
   ])
 
   return (
     <GearLibraryClient
       initialItems={gearItems ?? []}
+      initialKits={kits ?? []}
       gearTypes={gearTypes ?? []}
       userId={user!.id}
     />

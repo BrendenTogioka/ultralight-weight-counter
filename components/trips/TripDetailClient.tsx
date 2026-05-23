@@ -6,8 +6,8 @@ import {
   ArrowLeft, Plus, Download, Pencil, Trash2,
   ChevronDown, ChevronUp, ClipboardList,
   MoreHorizontal, Copy, GripVertical, List, LayoutGrid,
+  Link2, Link2Off,
 } from 'lucide-react'
-// Trash2 kept — used in TripItemDetailModal (remove from trip) and handleDeleteTrip
 import Link from 'next/link'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
@@ -133,6 +133,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const router = useRouter()
   const { unit } = useUnit()
   const [trip, setTrip] = useState(initialTrip)
+  const [isPublic, setIsPublic] = useState(initialTrip.is_public ?? false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditTrip, setShowEditTrip] = useState(false)
   const [selectedItem, setSelectedItem] = useState<TripItem | null>(null)
@@ -238,6 +239,24 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     // Persist the sort_order for the new item
     const supabase = createClient()
     supabase.from('trip_items').update({ sort_order: newSortOrder }).eq('id', newItem.id)
+  }
+
+  async function handleToggleShare() {
+    const newPublic = !isPublic
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('trips')
+      .update({ is_public: newPublic })
+      .eq('id', trip.id)
+    if (error) { toast.error('Failed to update sharing'); return }
+    setIsPublic(newPublic)
+    if (newPublic) {
+      const shareUrl = `${window.location.origin}/share/${trip.id}`
+      navigator.clipboard.writeText(shareUrl).catch(() => {})
+      toast.success('Trip is now public — link copied!')
+    } else {
+      toast.success('Trip is now private')
+    }
   }
 
   async function handleDeleteTrip() {
@@ -372,6 +391,21 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             <Download className="h-4 w-4" />
             Export
           </Link>
+
+          {/* Share toggle */}
+          <button
+            onClick={handleToggleShare}
+            aria-label={isPublic ? 'Disable sharing' : 'Enable sharing'}
+            title={isPublic ? 'Public — click to make private' : 'Share trip'}
+            className={cn(
+              'inline-flex items-center justify-center w-9 h-9 border rounded-lg transition-colors',
+              isPublic
+                ? 'border-green-500/40 bg-green-500/10 text-green-600 hover:bg-green-500/20'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary',
+            )}
+          >
+            {isPublic ? <Link2 className="h-4 w-4" /> : <Link2Off className="h-4 w-4" />}
+          </button>
 
           {/* Always: Add item */}
           <button
@@ -615,6 +649,9 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           existingGearIds={items.map(i => i.gear_item_id)}
           onClose={() => setShowAddModal(false)}
           onItemAdded={handleItemAdded}
+          onItemsAdded={newItems => {
+            newItems.forEach(handleItemAdded)
+          }}
         />
       )}
 

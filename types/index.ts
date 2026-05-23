@@ -48,12 +48,36 @@ export interface Trip {
   trip_date: string | null
   trip_date_end: string | null
   is_template: boolean
+  is_public: boolean
   cloned_from_id: string | null
   featured_image_url: string | null
   created_at: string
   updated_at: string
   // joined
   trip_items?: TripItem[]
+}
+
+export interface Kit {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  kit_items?: KitItem[]
+}
+
+export interface KitItem {
+  id: string
+  kit_id: string
+  gear_item_id: string
+  quantity: number
+  wear_type: WearType
+  sort_order: number
+  created_at: string
+  // joined
+  gear_item?: GearItem
 }
 
 export interface Checklist {

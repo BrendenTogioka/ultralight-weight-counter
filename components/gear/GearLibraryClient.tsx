@@ -1,27 +1,37 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Search, ArrowUpDown, LayoutGrid, List } from 'lucide-react'
-import type { GearItem, GearType, LibraryFilters, SortField } from '@/types'
+import { Plus, Search, ArrowUpDown, LayoutGrid, List, Download, Upload, Pencil, Trash2, Package } from 'lucide-react'
+import type { GearItem, GearType, Kit, LibraryFilters, SortField } from '@/types'
 import { GEAR_CATEGORIES, cn } from '@/lib/utils'
-import { toOz } from '@/lib/calculations'
+import { toOz, formatWeight } from '@/lib/calculations'
 import { GearItemCard } from '@/components/gear/GearItemCard'
 import { GearItemRow } from '@/components/gear/GearItemRow'
 import { GearDetailModal } from '@/components/gear/GearDetailModal'
 import { AddEditGearModal } from '@/components/gear/AddEditGearModal'
+import { KitBuilderModal } from '@/components/gear/KitBuilderModal'
+import { GearImportModal } from '@/components/gear/GearImportModal'
 import { motion } from 'framer-motion'
 import { pageVariants } from '@/lib/motion'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+import { useUnit } from '@/components/providers/UnitProvider'
 
 type ViewMode = 'grid' | 'list'
+type LibraryTab = 'items' | 'kits'
 
 interface Props {
   initialItems: GearItem[]
+  initialKits: Kit[]
   gearTypes: GearType[]
   userId: string
 }
 
-export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
+export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId }: Props) {
+  const { unit } = useUnit()
+  const [tab, setTab] = useState<LibraryTab>('items')
   const [items, setItems] = useState<GearItem[]>(initialItems)
+  const [kits, setKits] = useState<Kit[]>(initialKits)
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('gear_view') as ViewMode) ?? 'list'
@@ -31,6 +41,8 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
   const [detailItem, setDetailItem] = useState<GearItem | null>(null)
   const [editingItem, setEditingItem] = useState<GearItem | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [editingKit, setEditingKit] = useState<Kit | null | undefined>(undefined) // undefined = closed
+  const [showImportModal, setShowImportModal] = useState(false)
   const [filters, setFilters] = useState<LibraryFilters>({
     search: '',
     category: '',
@@ -104,7 +116,6 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
       setItems(prev => [item, ...prev])
     } else {
       setItems(prev => prev.map(i => i.id === item.id ? item : i))
-      // Refresh detail modal with updated item
       setDetailItem(item)
     }
   }
@@ -113,14 +124,61 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  function openDetail(item: GearItem) {
-    setDetailItem(item)
-  }
-
   function handleEditFromDetail(item: GearItem) {
     setDetailItem(null)
     setEditingItem(item)
     setShowEditModal(true)
+  }
+
+  function handleKitSaved(kit: Kit) {
+    setKits(prev => {
+      const idx = prev.findIndex(k => k.id === kit.id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = kit
+        return next
+      }
+      return [kit, ...prev]
+    })
+    setEditingKit(undefined)
+  }
+
+  async function handleDeleteKit(kit: Kit) {
+    if (!confirm(`Delete kit "${kit.name}"? This cannot be undone.`)) return
+    const supabase = createClient()
+    const { error } = await supabase.from('kits').delete().eq('id', kit.id)
+    if (error) { toast.error('Failed to delete kit'); return }
+    setKits(prev => prev.filter(k => k.id !== kit.id))
+    toast.success('Kit deleted')
+  }
+
+  function handleImported(imported: GearItem[]) {
+    setItems(prev => [...imported, ...prev])
+  }
+
+  function handleExportCSV() {
+    if (items.length === 0) { toast.error('No gear to export'); return }
+    const rows = [
+      ['name', 'brand', 'category', 'type', 'weight_oz', 'weight_unit', 'notes'],
+      ...items.map(i => [
+        i.name,
+        i.brand ?? '',
+        i.category,
+        i.type ?? '',
+        String(i.weight_oz),
+        i.weight_unit,
+        i.notes ?? '',
+      ]),
+    ]
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `gear-library-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${items.length} items`)
   }
 
   return (
@@ -135,154 +193,275 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Gear Library</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {filteredItems.length} of {items.length} items
+            {tab === 'items'
+              ? `${filteredItems.length} of ${items.length} items`
+              : `${kits.length} kit${kits.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => { setEditingItem(null); setShowEditModal(true) }}
-          className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Add gear
-        </button>
-      </div>
-
-      {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        {/* Search */}
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search gear…"
-            value={filters.search}
-            onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        {/* Category filter */}
-        <select
-          value={filters.category}
-          onChange={e => setFilters(prev => ({ ...prev, category: e.target.value }))}
-          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-        >
-          <option value="">All categories</option>
-          {GEAR_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-        </select>
-
-        {/* Type filter */}
-        <select
-          value={filters.type}
-          onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))}
-          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-        >
-          <option value="">All types</option>
-          {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
-        </select>
-
-        {/* Brand filter */}
-        <select
-          value={filters.brand}
-          onChange={e => setFilters(prev => ({ ...prev, brand: e.target.value }))}
-          className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-        >
-          <option value="">All brands</option>
-          {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
-        </select>
-
-        {/* Sort by weight */}
-        <button
-          onClick={() => toggleSort('weight')}
-          className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition-colors',
-            filters.sortField === 'weight'
-              ? 'border-primary bg-accent text-accent-foreground'
-              : 'border-input bg-background text-muted-foreground hover:text-foreground'
+        <div className="flex items-center gap-2">
+          {tab === 'items' && (
+            <>
+              <button
+                onClick={() => setShowImportModal(true)}
+                title="Import CSV"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+              <button
+                onClick={handleExportCSV}
+                title="Export CSV"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
+                onClick={() => { setEditingItem(null); setShowEditModal(true) }}
+                className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add gear
+              </button>
+            </>
           )}
-        >
-          <ArrowUpDown className="h-3.5 w-3.5" />
-          Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
-        </button>
-
-        {/* View mode toggle */}
-        <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
-          <button
-            onClick={() => changeViewMode('list')}
-            aria-label="List view"
-            aria-pressed={viewMode === 'list'}
-            className={cn(
-              'p-2 transition-colors',
-              viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <List className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => changeViewMode('grid')}
-            aria-label="Grid view"
-            aria-pressed={viewMode === 'grid'}
-            className={cn(
-              'p-2 transition-colors',
-              viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
+          {tab === 'kits' && (
+            <button
+              onClick={() => setEditingKit(null)}
+              className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Create kit
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Clear filters */}
-      {(filters.search || filters.category || filters.type || filters.brand) && (
-        <button
-          onClick={() => setFilters(prev => ({ ...prev, search: '', category: '', type: '', brand: '' }))}
-          className="text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors"
-        >
-          × Clear filters
-        </button>
-      )}
+      {/* Library tab switcher */}
+      <div className="flex gap-1 p-1 bg-secondary/50 rounded-xl mb-6 w-fit">
+        {(['items', 'kits'] as LibraryTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize',
+              tab === t ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
 
-      {/* Items */}
-      {filteredItems.length === 0 ? (
-        <div className="border border-dashed border-border rounded-2xl p-16 text-center">
-          <p className="font-medium text-foreground mb-1">No gear found</p>
-          <p className="text-sm text-muted-foreground">
-            {items.length === 0 ? 'Add your first piece of gear to get started.' : 'Try adjusting your filters.'}
-          </p>
-        </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredItems.map(item => (
-            <GearItemCard key={item.id} item={item} onClick={() => openDetail(item)} />
-          ))}
-        </div>
-      ) : (
-        <div className="border border-border rounded-xl overflow-hidden">
-          {/* List header */}
-          <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto_auto] gap-3 sm:gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
-            <div className="w-8" />
-            <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('name')}>
-              Name {filters.sortField === 'name' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
-            </button>
-            <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
-              Brand {filters.sortField === 'brand' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
-            </button>
-            <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
-              Category {filters.sortField === 'category' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
-            </button>
-            <button className="w-16 sm:w-20 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
+      {/* ── Items tab ── */}
+      {tab === 'items' && (
+        <>
+          {/* Filters bar */}
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search gear…"
+                value={filters.search}
+                onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <select
+              value={filters.category}
+              onChange={e => setFilters(prev => ({ ...prev, category: e.target.value }))}
+              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            >
+              <option value="">All categories</option>
+              {GEAR_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+
+            <select
+              value={filters.type}
+              onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))}
+              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            >
+              <option value="">All types</option>
+              {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
+            </select>
+
+            <select
+              value={filters.brand}
+              onChange={e => setFilters(prev => ({ ...prev, brand: e.target.value }))}
+              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            >
+              <option value="">All brands</option>
+              {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+            </select>
+
+            <button
+              onClick={() => toggleSort('weight')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition-colors',
+                filters.sortField === 'weight'
+                  ? 'border-primary bg-accent text-accent-foreground'
+                  : 'border-input bg-background text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
               Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
             </button>
+
+            <div className="flex items-center border border-input rounded-lg overflow-hidden ml-auto">
+              <button
+                onClick={() => changeViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={cn('p-2 transition-colors', viewMode === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => changeViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={cn('p-2 transition-colors', viewMode === 'grid' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          {filteredItems.map((item, idx) => (
-            <GearItemRow
-              key={item.id}
-              item={item}
-              isLast={idx === filteredItems.length - 1}
-              onClick={() => openDetail(item)}
-            />
-          ))}
-        </div>
+
+          {(filters.search || filters.category || filters.type || filters.brand) && (
+            <button
+              onClick={() => setFilters(prev => ({ ...prev, search: '', category: '', type: '', brand: '' }))}
+              className="text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors"
+            >
+              × Clear filters
+            </button>
+          )}
+
+          {filteredItems.length === 0 ? (
+            <div className="border border-dashed border-border rounded-2xl p-16 text-center">
+              <p className="font-medium text-foreground mb-1">No gear found</p>
+              <p className="text-sm text-muted-foreground">
+                {items.length === 0 ? 'Add your first piece of gear to get started.' : 'Try adjusting your filters.'}
+              </p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredItems.map(item => (
+                <GearItemCard key={item.id} item={item} onClick={() => setDetailItem(item)} />
+              ))}
+            </div>
+          ) : (
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto_auto] gap-3 sm:gap-4 px-4 py-2.5 bg-secondary/50 border-b border-border text-xs font-medium text-muted-foreground">
+                <div className="w-8" />
+                <button className="text-left hover:text-foreground transition-colors" onClick={() => toggleSort('name')}>
+                  Name {filters.sortField === 'name' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
+                </button>
+                <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('brand')}>
+                  Brand {filters.sortField === 'brand' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
+                </button>
+                <button className="hidden sm:block w-28 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('category')}>
+                  Category {filters.sortField === 'category' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
+                </button>
+                <button className="w-16 sm:w-20 text-right hover:text-foreground transition-colors" onClick={() => toggleSort('weight')}>
+                  Weight {filters.sortField === 'weight' ? (filters.sortDirection === 'asc' ? '↑' : '↓') : ''}
+                </button>
+              </div>
+              {filteredItems.map((item, idx) => (
+                <GearItemRow
+                  key={item.id}
+                  item={item}
+                  isLast={idx === filteredItems.length - 1}
+                  onClick={() => setDetailItem(item)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Kits tab ── */}
+      {tab === 'kits' && (
+        <>
+          {kits.length === 0 ? (
+            <div className="border border-dashed border-border rounded-2xl p-16 text-center">
+              <Package className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="font-medium text-foreground mb-1">No kits yet</p>
+              <p className="text-sm text-muted-foreground mb-5">
+                Group gear into reusable kits — sleep system, cook kit, etc.
+              </p>
+              <button
+                onClick={() => setEditingKit(null)}
+                className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Create first kit
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {kits.map(kit => {
+                const kitItems = kit.kit_items ?? []
+                const totalOz = kitItems.reduce((sum, ki) => {
+                  const oz = ki.gear_item ? toOz(ki.gear_item.weight_oz, ki.gear_item.weight_unit) * ki.quantity : 0
+                  return sum + oz
+                }, 0)
+                return (
+                  <div key={kit.id} className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{kit.name}</p>
+                        {kit.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{kit.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setEditingKit(kit)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          aria-label="Edit kit"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteKit(kit)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          aria-label="Delete kit"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {kitItems.length > 0 ? (
+                      <>
+                        <div className="space-y-1">
+                          {kitItems.slice(0, 4).map(ki => (
+                            <div key={ki.id} className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground truncate flex-1">{ki.gear_item?.name}</span>
+                              {ki.quantity > 1 && <span className="text-xs text-muted-foreground">×{ki.quantity}</span>}
+                            </div>
+                          ))}
+                          {kitItems.length > 4 && (
+                            <p className="text-xs text-muted-foreground">+{kitItems.length - 4} more</p>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-border mt-auto">
+                          <span className="text-xs text-muted-foreground">{kitItems.length} item{kitItems.length !== 1 ? 's' : ''}</span>
+                          <span className="text-sm font-semibold tabular-nums">{formatWeight(totalOz, unit, 1)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No items</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Gear detail modal */}
@@ -295,7 +474,7 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
         />
       )}
 
-      {/* Add / Edit modal */}
+      {/* Add / Edit gear modal */}
       {showEditModal && (
         <AddEditGearModal
           item={editingItem}
@@ -303,6 +482,27 @@ export function GearLibraryClient({ initialItems, gearTypes, userId }: Props) {
           userId={userId}
           onClose={() => { setShowEditModal(false); setEditingItem(null) }}
           onSaved={handleItemSaved}
+        />
+      )}
+
+      {/* Kit builder modal */}
+      {editingKit !== undefined && (
+        <KitBuilderModal
+          kit={editingKit}
+          userId={userId}
+          gearTypes={gearTypes}
+          onClose={() => setEditingKit(undefined)}
+          onSaved={handleKitSaved}
+        />
+      )}
+
+      {/* Import modal */}
+      {showImportModal && (
+        <GearImportModal
+          userId={userId}
+          existingItems={items}
+          onClose={() => setShowImportModal(false)}
+          onImported={handleImported}
         />
       )}
     </motion.div>
