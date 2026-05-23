@@ -273,7 +273,7 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
             <select
               value={filters.category}
               onChange={e => setFilters(prev => ({ ...prev, category: e.target.value }))}
-              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+              className="pl-3 pr-10 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             >
               <option value="">All categories</option>
               {GEAR_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -282,7 +282,7 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
             <select
               value={filters.type}
               onChange={e => setFilters(prev => ({ ...prev, type: e.target.value }))}
-              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+              className="pl-3 pr-10 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             >
               <option value="">All types</option>
               {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
@@ -291,7 +291,7 @@ export function GearLibraryClient({ initialItems, initialKits, gearTypes, userId
             <select
               value={filters.brand}
               onChange={e => setFilters(prev => ({ ...prev, brand: e.target.value }))}
-              className="pl-3 pr-8 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+              className="pl-3 pr-10 py-2 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             >
               <option value="">All brands</option>
               {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}

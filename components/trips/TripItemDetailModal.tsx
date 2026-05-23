@@ -84,7 +84,7 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
 
         <div className="px-5 py-4 flex flex-col gap-4">
           {/* Image + basic info — image takes ~45% width */}
-          <div className="flex gap-4 items-start">
+          <div className="flex gap-4 items-center">
             <div className="w-[45%] aspect-square rounded-xl overflow-hidden shrink-0 bg-secondary flex items-center justify-center">
               {gear.image_url ? (
                 <img src={gear.image_url} alt={gear.name} className="w-full h-full object-cover" />
