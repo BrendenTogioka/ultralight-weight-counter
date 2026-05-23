@@ -198,7 +198,7 @@ export function AddEditGearModal({ item, gearTypes, userId, onClose, onSaved, pr
             <label className="text-sm font-medium text-foreground">Photo (optional)</label>
             <div
               onClick={() => fileRef.current?.click()}
-              className="w-full h-32 rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center overflow-hidden bg-secondary/30"
+              className="w-40 aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex items-center justify-center overflow-hidden bg-secondary/30"
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />

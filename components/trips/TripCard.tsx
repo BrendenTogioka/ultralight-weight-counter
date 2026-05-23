@@ -16,7 +16,7 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="block bg-card border border-border rounded-2xl p-5 card-hover group"
+      className="flex flex-col h-full bg-card border border-border rounded-2xl p-5 card-hover group"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -31,9 +31,10 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
           <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
             {trip.name}
           </h3>
-          {trip.description && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{trip.description}</p>
-          )}
+          {/* Always reserve one line for description so cards align */}
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 min-h-[1rem]">
+            {trip.description ?? ''}
+          </p>
         </div>
       </div>
 

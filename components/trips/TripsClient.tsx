@@ -135,7 +135,7 @@ export function TripsClient({ trips }: Props) {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {sorted.map(trip => (
-              <motion.div key={trip.id} variants={staggerItem}>
+              <motion.div key={trip.id} variants={staggerItem} className="h-full">
                 <TripCard trip={trip} />
               </motion.div>
             ))}
@@ -156,7 +156,7 @@ export function TripsClient({ trips }: Props) {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {templates.map(trip => (
-              <motion.div key={trip.id} variants={staggerItem}>
+              <motion.div key={trip.id} variants={staggerItem} className="h-full">
                 <TripCard trip={trip} isTemplate />
               </motion.div>
             ))}

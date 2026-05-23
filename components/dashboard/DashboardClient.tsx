@@ -47,6 +47,9 @@ export function DashboardClient({ trips }: Props) {
         </Link>
       </div>
 
+      {/* Analytics charts (only shown when 2+ trips exist) */}
+      <TripChartsSection trips={trips} />
+
       {/* Recent trips */}
       <section>
         {activTrips.length > 0 && (
@@ -88,7 +91,7 @@ export function DashboardClient({ trips }: Props) {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
               {recentTrips.map(trip => (
-                <motion.div key={trip.id} variants={staggerItem}>
+                <motion.div key={trip.id} variants={staggerItem} className="h-full">
                   <TripCard trip={trip} />
                 </motion.div>
               ))}
@@ -109,9 +112,6 @@ export function DashboardClient({ trips }: Props) {
         )}
       </section>
 
-      {/* Analytics charts (only shown when 2+ trips exist) */}
-      <TripChartsSection trips={trips} />
-
       {/* Templates */}
       {templates.length > 0 && (
         <section className="mt-10">
@@ -125,7 +125,7 @@ export function DashboardClient({ trips }: Props) {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
             {templates.map(trip => (
-              <motion.div key={trip.id} variants={staggerItem}>
+              <motion.div key={trip.id} variants={staggerItem} className="h-full">
                 <TripCard trip={trip} isTemplate />
               </motion.div>
             ))}
