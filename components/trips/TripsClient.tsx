@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, Mountain, ArrowUpDown } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import { Plus, Mountain, ArrowUpDown, Scale, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { TripCard } from '@/components/trips/TripCard'
 import type { Trip } from '@/types'
 import { calculateWeightSummary } from '@/lib/calculations'
@@ -25,8 +26,33 @@ interface Props {
 }
 
 export function TripsClient({ trips }: Props) {
+  const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>('updated_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else if (next.size < 2) {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  function handleCompare() {
+    const [a, b] = [...selectedIds]
+    router.push(`/trips/compare?a=${a}&b=${b}`)
+  }
 
   const activeTrips = useMemo(() => trips.filter(t => !t.is_template), [trips])
   const templates = useMemo(() => trips.filter(t => t.is_template), [trips])
@@ -83,14 +109,55 @@ export function TripsClient({ trips }: Props) {
             {activeTrips.length} trip{activeTrips.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link
-          href="/trips/new"
-          className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">New trip</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Compare entry point — only shown when 2+ trips exist and not in select mode */}
+          {activeTrips.length >= 2 && !selectMode && (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Scale className="h-4 w-4" />
+              <span className="hidden sm:inline">Compare</span>
+            </button>
+          )}
+          {/* Cancel select mode */}
+          {selectMode && (
+            <button
+              onClick={exitSelectMode}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </button>
+          )}
+          <Link
+            href="/trips/new"
+            className="inline-flex items-center gap-2 btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New trip</span>
+          </Link>
+        </div>
       </div>
+
+      {/* Select-mode instruction banner */}
+      <AnimatePresence>
+        {selectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mb-4 px-4 py-3 rounded-xl bg-accent border border-primary/20 text-sm text-accent-foreground flex items-center gap-2"
+          >
+            <Scale className="h-4 w-4 shrink-0 text-primary" />
+            {selectedIds.size === 0
+              ? 'Select two trips to compare'
+              : selectedIds.size === 1
+                ? 'Select one more trip'
+                : 'Ready to compare'}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Active trips */}
       <section>
@@ -144,12 +211,38 @@ export function TripsClient({ trips }: Props) {
           >
             {sorted.map(trip => (
               <motion.div key={trip.id} variants={staggerItem} className="h-full">
-                <TripCard trip={trip} />
+                <TripCard
+                  trip={trip}
+                  selectable={selectMode}
+                  selected={selectedIds.has(trip.id)}
+                  onSelect={toggleSelect}
+                />
               </motion.div>
             ))}
           </motion.div>
         )}
       </section>
+
+      {/* Sticky compare action bar — fixed, so DOM position doesn't matter */}
+      <AnimatePresence>
+        {selectMode && selectedIds.size === 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-card border border-border rounded-2xl shadow-2xl px-5 py-3.5"
+          >
+            <Scale className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm font-medium text-foreground">2 trips selected</span>
+            <button
+              onClick={handleCompare}
+              className="btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Compare →
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Templates */}
       {templates.length > 0 && (

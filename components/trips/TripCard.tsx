@@ -1,23 +1,29 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Package, Mountain } from 'lucide-react'
+import { Calendar, Package, Mountain, Check } from 'lucide-react'
 import type { Trip } from '@/types'
-import { calculateWeightSummary, formatWeight, formatWeightDisplay, getWeightBarSegments } from '@/lib/calculations'
+import { calculateWeightSummary, formatWeightDisplay, getWeightBarSegments } from '@/lib/calculations'
 import { formatDate, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 
-export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolean }) {
+interface TripCardProps {
+  trip: Trip
+  isTemplate?: boolean
+  /** When true, clicking the card calls onSelect instead of navigating */
+  selectable?: boolean
+  selected?: boolean
+  onSelect?: (id: string) => void
+}
+
+export function TripCard({ trip, isTemplate, selectable, selected, onSelect }: TripCardProps) {
   const { unit } = useUnit()
   const items = trip.trip_items ?? []
   const summary = calculateWeightSummary(items as any)
   const segments = getWeightBarSegments(summary)
 
-  return (
-    <Link
-      href={`/trips/${trip.id}`}
-      className="flex flex-col h-full bg-card border border-border rounded-2xl overflow-hidden card-hover group"
-    >
+  const inner = (
+    <>
       {/* 16:9 featured image / placeholder */}
       <div className="relative aspect-video w-full overflow-hidden bg-secondary shrink-0">
         {trip.featured_image_url ? (
@@ -35,6 +41,19 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
           <span className="absolute top-2 left-2 text-xs bg-accent/90 backdrop-blur-sm text-accent-foreground px-2 py-0.5 rounded-full font-medium">
             Template
           </span>
+        )}
+        {/* Selection checkbox overlay */}
+        {selectable && (
+          <div className="absolute top-2.5 right-2.5">
+            <div className={cn(
+              'w-5 h-5 rounded border-2 flex items-center justify-center transition-all shadow-sm',
+              selected
+                ? 'bg-primary border-primary'
+                : 'bg-black/25 border-white/70 backdrop-blur-sm',
+            )}>
+              {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+            </div>
+          </div>
         )}
       </div>
 
@@ -107,6 +126,34 @@ export function TripCard({ trip, isTemplate }: { trip: Trip; isTemplate?: boolea
           )}
         </div>
       </div>
+    </>
+  )
+
+  if (selectable) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect?.(trip.id)}
+        onKeyDown={e => e.key === 'Enter' && onSelect?.(trip.id)}
+        className={cn(
+          'flex flex-col h-full bg-card border rounded-2xl overflow-hidden cursor-pointer transition-all',
+          selected
+            ? 'border-primary ring-2 ring-primary/25 shadow-sm'
+            : 'border-border hover:border-primary/40',
+        )}
+      >
+        {inner}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={`/trips/${trip.id}`}
+      className="flex flex-col h-full bg-card border border-border rounded-2xl overflow-hidden card-hover group"
+    >
+      {inner}
     </Link>
   )
 }
