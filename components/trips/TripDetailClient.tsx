@@ -27,7 +27,7 @@ import {
   calculateWeightSummary, calculateCategoryWeights,
   formatWeight, formatWeightDisplay, getEffectiveWeightOz,
 } from '@/lib/calculations'
-import { CATEGORY_ICONS, cn } from '@/lib/utils'
+import { CATEGORY_ICONS, GEAR_CATEGORIES, cn } from '@/lib/utils'
 import { useUnit } from '@/components/providers/UnitProvider'
 import { TripItemCard } from '@/components/trips/TripItemCard'
 import { WeightSummaryBar } from '@/components/trips/WeightSummaryBar'
@@ -65,6 +65,7 @@ const ConfirmDialog = dynamic(() =>
 )
 
 type WearFilter = 'all' | WearType
+type CategoryFilter = 'all' | string
 type TripViewMode = 'list' | 'grid'
 
 interface Props {
@@ -165,6 +166,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
   const [editingGearItem, setEditingGearItem] = useState<GearItem | null>(null)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [wearFilter, setWearFilter] = useState<WearFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [tripViewMode, setTripViewMode] = useState<TripViewMode>(() => {
     if (typeof window !== 'undefined') {
@@ -188,9 +190,21 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
 
   const summary = useMemo(() => calculateWeightSummary(items), [items])
   const filteredItems = useMemo(() =>
-    wearFilter === 'all' ? items : items.filter(i => i.wear_type === wearFilter),
-    [items, wearFilter],
+    items.filter(i =>
+      (wearFilter === 'all' || i.wear_type === wearFilter) &&
+      (categoryFilter === 'all' || i.gear_item?.category === categoryFilter)
+    ),
+    [items, wearFilter, categoryFilter],
   )
+
+  // Sorted list of categories that are actually present in this trip,
+  // following the canonical GEAR_CATEGORIES order.
+  const presentCategories = useMemo(() => {
+    const cats = new Set(items.map(i => i.gear_item?.category).filter(Boolean) as string[])
+    const knownOrder = (GEAR_CATEGORIES as readonly string[]).filter(c => cats.has(c))
+    const unknown = [...cats].filter(c => !(GEAR_CATEGORIES as readonly string[]).includes(c))
+    return [...knownOrder, ...unknown]
+  }, [items])
   const categoryWeights = useMemo(() => calculateCategoryWeights(filteredItems), [filteredItems])
 
   function toggleCategory(cat: string) {
@@ -565,6 +579,38 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         </div>
       )}
 
+      {/* Category filter chips — only shown when 2+ categories exist */}
+      {presentCategories.length > 1 && (
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <button
+            onClick={() => setCategoryFilter('all')}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+              categoryFilter === 'all'
+                ? 'border-primary bg-accent text-accent-foreground'
+                : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+            )}
+          >
+            All categories
+          </button>
+          {presentCategories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(categoryFilter === cat ? 'all' : cat)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                categoryFilter === cat
+                  ? 'border-primary bg-accent text-accent-foreground'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+              )}
+            >
+              <span>{CATEGORY_ICONS[cat] ?? '📦'}</span>
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Category groups ── */}
       <motion.div
         variants={staggerContainer}
@@ -575,7 +621,11 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         {categoryWeights.length === 0 && (
           <div className="border border-dashed border-border rounded-2xl p-16 text-center">
             <p className="font-medium text-foreground mb-1">
-              {items.length === 0 ? 'No items yet' : `No ${wearFilter} items`}
+              {items.length === 0
+                ? 'No items yet'
+                : categoryFilter !== 'all'
+                  ? `No ${wearFilter === 'all' ? '' : wearFilter + ' '}items in ${categoryFilter}`
+                  : `No ${wearFilter} items`}
             </p>
             <p className="text-sm text-muted-foreground mb-5">
               {items.length === 0

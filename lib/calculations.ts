@@ -128,7 +128,21 @@ export function calculateCategoryWeights(items: TripItem[]): CategoryWeight[] {
     })
   }
 
-  return Array.from(map.values()).sort((a, b) => b.weight_oz - a.weight_oz)
+  // Sort by the canonical category order; unknown categories fall to the end
+  // sorted by weight descending so they don't appear in a random order.
+  const CATEGORY_ORDER = [
+    'Pack', 'Shelter', 'Sleep', 'Kitchen', 'Clothing',
+    'Water', 'Electronics', 'Safety', 'Misc',
+  ]
+
+  return Array.from(map.values()).sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a.category)
+    const bi = CATEGORY_ORDER.indexOf(b.category)
+    if (ai !== -1 && bi !== -1) return ai - bi        // both known → canonical order
+    if (ai !== -1) return -1                            // a known, b unknown → a first
+    if (bi !== -1) return 1                             // b known, a unknown → b first
+    return b.weight_oz - a.weight_oz                   // both unknown → heaviest first
+  })
 }
 
 // ============================================================

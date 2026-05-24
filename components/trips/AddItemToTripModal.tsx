@@ -176,16 +176,43 @@ export function AddItemToTripModal({
     onClose()
   }
 
-  function handleNewGearSaved(item: GearItem) {
+  async function handleNewGearSaved(item: GearItem) {
+    // Keep gear library + module cache in sync
     setGearLibrary(prev => {
       const next = [item, ...prev]
-      // Keep module cache in sync so re-opens reflect the new item
       if (_gearCache?.userId === userId) _gearCache = { ..._gearCache, gear: next }
       return next
     })
-    setSelected(item)
-    setShowNewGearModal(false)
-    setModalTab('gear')
+
+    // Auto-add the newly created item straight to the trip so the user
+    // doesn't have to locate it in the list and click "Add to trip" again.
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('trip_items')
+      .insert({
+        trip_id: tripId,
+        gear_item_id: item.id,
+        user_id: userId,
+        quantity: 1,
+        wear_type: 'base' as const,
+        included: true,
+      })
+      .select(`*, gear_item:gear_items(*)`)
+      .single()
+
+    if (error) {
+      toast.error('Item saved to library but could not be added to trip')
+      // Fall back: return to gear list with item selected so the user can
+      // still add it manually.
+      setSelected(item)
+      setShowNewGearModal(false)
+      setModalTab('gear')
+      return
+    }
+
+    toast.success(`"${item.name}" added to trip`)
+    onItemAdded(data)
+    onClose()
   }
 
   if (showNewGearModal) {

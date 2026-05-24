@@ -17,6 +17,7 @@ export default async function DashboardPage() {
         )
       `)
       .eq('user_id', user!.id)
+      .order('trip_date', { ascending: false, nullsFirst: false })
       .order('updated_at', { ascending: false }),
     supabase
       .from('gear_types')
