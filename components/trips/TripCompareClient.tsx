@@ -202,18 +202,22 @@ export function TripCompareClient({ tripA, tripB }: Props) {
         ))}
       </div>
 
-      {/* ── Weight summary table ── */}
+      {/* ── Weight summary table ──
+           Column widths are identical in the header and every data row so
+           they stay locked together across all viewport sizes. */}
       <div className="border border-border rounded-xl overflow-hidden mb-8">
-        {/* Column headers */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
-          <span />
-          <span className="text-xs font-semibold pr-6 tabular-nums" style={{ color: COLOR_A }}>
-            {nameA}
-          </span>
-          <span className="text-xs font-medium text-muted-foreground text-center w-20">Δ</span>
-          <span className="text-xs font-semibold tabular-nums" style={{ color: COLOR_B }}>
-            {nameB}
-          </span>
+        {/* Header — same column widths as data rows */}
+        <div className="flex items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
+          <span className="flex-1" />
+          <div className="w-20 sm:w-28 shrink-0 text-right">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>{nameA}</span>
+          </div>
+          <div className="w-14 sm:w-16 shrink-0 text-center">
+            <span className="text-xs font-medium text-muted-foreground">Δ</span>
+          </div>
+          <div className="w-20 sm:w-28 shrink-0 text-right">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>{nameB}</span>
+          </div>
         </div>
 
         {summaryRows.map(({ label, ozA, ozB }, idx) => {
@@ -224,22 +228,25 @@ export function TripCompareClient({ tripA, tripB }: Props) {
             <div
               key={label}
               className={cn(
-                'grid grid-cols-[1fr_auto_auto_auto] items-center px-4 py-3',
+                'flex items-center px-4 py-3',
                 idx < summaryRows.length - 1 && 'border-b border-border',
                 isTotal && 'bg-secondary/20',
               )}
             >
-              <span className={cn('text-sm', isTotal ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+              <span className={cn(
+                'flex-1 min-w-0 text-sm',
+                isTotal ? 'font-semibold text-foreground' : 'text-muted-foreground',
+              )}>
                 {label}
               </span>
-              <div className="text-right pr-6">
+              <div className="w-20 sm:w-28 shrink-0 text-right">
                 <span className={cn('text-sm tabular-nums', isTotal && 'font-semibold')}>{pA}</span>
                 {sA && <p className="text-xs text-muted-foreground tabular-nums leading-tight">{sA}</p>}
               </div>
-              <div className="w-20 text-center">
+              <div className="w-14 sm:w-16 shrink-0 text-center">
                 <Delta oz={ozB - ozA} unit={unit} />
               </div>
-              <div className="text-right">
+              <div className="w-20 sm:w-28 shrink-0 text-right">
                 <span className={cn('text-sm tabular-nums', isTotal && 'font-semibold')}>{pB}</span>
                 {sB && <p className="text-xs text-muted-foreground tabular-nums leading-tight">{sB}</p>}
               </div>
@@ -345,13 +352,21 @@ export function TripCompareClient({ tripA, tripB }: Props) {
 
       {/* ── Category breakdown ── */}
       <div className="border border-border rounded-xl overflow-hidden mb-6">
-        {/* Header row */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</span>
-          <span className="text-xs font-semibold pr-6 text-right" style={{ color: COLOR_A }}>{nameA}</span>
-          <span className="text-xs font-medium text-muted-foreground text-center w-20">Δ</span>
-          <span className="text-xs font-semibold text-right" style={{ color: COLOR_B }}>{nameB}</span>
-          <span className="w-8" />
+        {/* Header — identical column widths to the data rows below */}
+        <div className="flex items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
+          <span className="flex-1 min-w-0 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Category
+          </span>
+          <div className="w-20 sm:w-24 shrink-0 text-right">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>{nameA}</span>
+          </div>
+          <div className="w-14 sm:w-16 shrink-0 text-center">
+            <span className="text-xs font-medium text-muted-foreground">Δ</span>
+          </div>
+          <div className="w-20 sm:w-24 shrink-0 text-right">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>{nameB}</span>
+          </div>
+          <div className="w-8 shrink-0" />
         </div>
 
         {allCategories.map((cat, idx) => {
@@ -364,28 +379,28 @@ export function TripCompareClient({ tripA, tripB }: Props) {
 
           return (
             <div key={cat} className={cn(!isLast && 'border-b border-border')}>
-              {/* Category summary row */}
+              {/* Category summary row — same column widths as header */}
               <button
                 onClick={() => toggleCat(cat)}
-                className="w-full grid grid-cols-[1fr_auto_auto_auto_auto] items-center px-4 py-3 hover:bg-secondary/20 transition-colors text-left"
+                className="w-full flex items-center px-4 py-3 hover:bg-secondary/20 transition-colors text-left"
               >
-                <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <span className="text-base">{CATEGORY_ICONS[cat] ?? '📦'}</span>
-                  {cat}
-                  <span className="text-xs text-muted-foreground font-normal">
-                    ({(catItemsA.length > 0 ? catItemsA.length : 0)} / {catItemsB.length > 0 ? catItemsB.length : 0})
+                <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <span className="text-base shrink-0">{CATEGORY_ICONS[cat] ?? '📦'}</span>
+                  <span className="truncate">{cat}</span>
+                  <span className="text-xs text-muted-foreground font-normal shrink-0 hidden sm:inline">
+                    ({catItemsA.length}/{catItemsB.length})
                   </span>
                 </span>
-                <div className="text-right pr-6">
+                <div className="w-20 sm:w-24 shrink-0 text-right">
                   <span className="text-sm tabular-nums">{formatWeightDisplay(wA, unit, 1).primary}</span>
                 </div>
-                <div className="w-20 text-center">
+                <div className="w-14 sm:w-16 shrink-0 text-center">
                   <Delta oz={wB - wA} unit={unit} />
                 </div>
-                <div className="text-right">
+                <div className="w-20 sm:w-24 shrink-0 text-right">
                   <span className="text-sm tabular-nums">{formatWeightDisplay(wB, unit, 1).primary}</span>
                 </div>
-                <div className="w-8 flex items-center justify-center text-muted-foreground">
+                <div className="w-8 shrink-0 flex items-center justify-center text-muted-foreground">
                   {expanded
                     ? <ChevronDown className="h-4 w-4" />
                     : <ChevronRight className="h-4 w-4" />}
