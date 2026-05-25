@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Download, Pencil, Trash2,
   ChevronDown, ChevronUp, ClipboardList,
   MoreHorizontal, Copy, GripVertical, List, LayoutGrid,
-  Link2, Link2Off,
+  Link2, Globe, Lock,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -281,7 +281,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     supabase.from('trip_items').update({ sort_order: newSortOrder }).eq('id', newItem.id)
   }
 
-  async function handleToggleShare() {
+  async function handleTogglePublish() {
     const newPublic = !isPublic
     const supabase = createClient()
     const { error } = await supabase
@@ -290,13 +290,13 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
       .eq('id', trip.id)
     if (error) { toast.error('Failed to update sharing'); return }
     setIsPublic(newPublic)
-    if (newPublic) {
-      const shareUrl = `${window.location.origin}/share/${trip.id}`
-      navigator.clipboard.writeText(shareUrl).catch(() => {})
-      toast.success('Trip is now public — link copied!')
-    } else {
-      toast.success('Trip is now private')
-    }
+    toast.success(newPublic ? 'Trip is now live' : 'Trip is now private')
+  }
+
+  function handleCopyLink() {
+    const shareUrl = `${window.location.origin}/share/${trip.id}`
+    navigator.clipboard.writeText(shareUrl).catch(() => {})
+    toast.success('Link copied!')
   }
 
   async function handleDeleteTrip() {
@@ -412,12 +412,11 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Desktop-only: Checklist + Export */}
+          {/* ── Desktop-only buttons ── */}
           <button
             onClick={handleCreateChecklist}
             aria-label="Create packing checklist"
-            title="Create checklist"
-            className="hidden sm:inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <ClipboardList className="h-4 w-4" />
             Checklist
@@ -425,28 +424,40 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           <Link
             href={`/trips/${trip.id}/export`}
             aria-label="Export trip"
-            className="hidden sm:inline-flex items-center justify-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
           >
             <Download className="h-4 w-4" />
             Export
           </Link>
 
-          {/* Share toggle */}
+          {/* Publish toggle — desktop only */}
           <button
-            onClick={handleToggleShare}
-            aria-label={isPublic ? 'Disable sharing' : 'Enable sharing'}
-            title={isPublic ? 'Public — click to make private' : 'Share trip'}
+            onClick={handleTogglePublish}
+            aria-label={isPublic ? 'Unpublish trip' : 'Publish trip'}
             className={cn(
-              'inline-flex items-center justify-center w-9 h-9 border rounded-lg transition-colors',
+              'hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition-colors',
               isPublic
                 ? 'border-green-500/40 bg-green-500/10 text-green-600 hover:bg-green-500/20'
                 : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary',
             )}
           >
-            {isPublic ? <Link2 className="h-4 w-4" /> : <Link2Off className="h-4 w-4" />}
+            {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            {isPublic ? 'Live' : 'Private'}
           </button>
 
-          {/* Always: Add item */}
+          {/* Copy link — desktop only, visible when live */}
+          {isPublic && (
+            <button
+              onClick={handleCopyLink}
+              aria-label="Copy share link"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-border rounded-lg hover:bg-secondary transition-colors"
+            >
+              <Link2 className="h-4 w-4" />
+              Copy link
+            </button>
+          )}
+
+          {/* ── Always visible ── */}
           <button
             onClick={() => setShowAddModal(true)}
             aria-label="Add item to trip"
@@ -456,7 +467,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
             <span className="hidden sm:inline">Add item</span>
           </button>
 
-          {/* Always: three-dot menu */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
@@ -472,7 +482,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                 sideOffset={6}
                 className="z-50 min-w-48 bg-card border border-border rounded-xl shadow-xl p-1"
               >
-                {/* Mobile-only items */}
+                {/* ── Mobile-only items ── */}
                 <DropdownMenu.Item
                   onSelect={handleCreateChecklist}
                   className="sm:hidden flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
@@ -480,7 +490,6 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                   Create checklist
                 </DropdownMenu.Item>
-                <DropdownMenu.Separator className="sm:hidden h-px bg-border my-1 -mx-1" />
                 <DropdownMenu.Item asChild className="sm:hidden">
                   <Link
                     href={`/trips/${trip.id}/export`}
@@ -491,8 +500,29 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
                   </Link>
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="sm:hidden h-px bg-border my-1 -mx-1" />
+                <DropdownMenu.Item
+                  onSelect={handleTogglePublish}
+                  className="sm:hidden flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
+                >
+                  {isPublic
+                    ? <Globe className="h-4 w-4 text-green-500" />
+                    : <Lock className="h-4 w-4 text-muted-foreground" />}
+                  <span className={isPublic ? 'text-green-600' : 'text-foreground'}>
+                    {isPublic ? 'Live — tap to unpublish' : 'Publish trip'}
+                  </span>
+                </DropdownMenu.Item>
+                {isPublic && (
+                  <DropdownMenu.Item
+                    onSelect={handleCopyLink}
+                    className="sm:hidden flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
+                  >
+                    <Link2 className="h-4 w-4 text-muted-foreground" />
+                    Copy link
+                  </DropdownMenu.Item>
+                )}
+                <DropdownMenu.Separator className="sm:hidden h-px bg-border my-1 -mx-1" />
 
-                {/* Always visible */}
+                {/* ── Always visible ── */}
                 <DropdownMenu.Item
                   onSelect={handleDuplicateTrip}
                   className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-secondary cursor-pointer outline-none select-none"
