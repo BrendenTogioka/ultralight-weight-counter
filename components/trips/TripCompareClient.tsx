@@ -203,20 +203,26 @@ export function TripCompareClient({ tripA, tripB }: Props) {
       </div>
 
       {/* ── Weight summary table ──
-           Column widths are identical in the header and every data row so
-           they stay locked together across all viewport sizes. */}
+           Label column is fixed-width (narrow); data columns are flex-1 so
+           they expand equally and fill the remaining space. This keeps the
+           category label tight and lets trip names show in full on wide screens.
+           Identical column structure in every row guarantees alignment. */}
       <div className="border border-border rounded-xl overflow-hidden mb-8">
-        {/* Header — same column widths as data rows */}
+        {/* Header */}
         <div className="flex items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
-          <span className="flex-1" />
-          <div className="w-20 sm:w-28 shrink-0 text-right">
-            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>{nameA}</span>
+          <div className="w-24 sm:w-32 shrink-0" />
+          <div className="flex-1 text-center">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>
+              {tripA.name}
+            </span>
           </div>
-          <div className="w-14 sm:w-16 shrink-0 text-center">
+          <div className="w-12 sm:w-16 shrink-0 text-center">
             <span className="text-xs font-medium text-muted-foreground">Δ</span>
           </div>
-          <div className="w-20 sm:w-28 shrink-0 text-right">
-            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>{nameB}</span>
+          <div className="flex-1 text-center">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>
+              {tripB.name}
+            </span>
           </div>
         </div>
 
@@ -234,19 +240,19 @@ export function TripCompareClient({ tripA, tripB }: Props) {
               )}
             >
               <span className={cn(
-                'flex-1 min-w-0 text-sm',
+                'w-24 sm:w-32 shrink-0 text-sm',
                 isTotal ? 'font-semibold text-foreground' : 'text-muted-foreground',
               )}>
                 {label}
               </span>
-              <div className="w-20 sm:w-28 shrink-0 text-right">
+              <div className="flex-1 text-center">
                 <span className={cn('text-sm tabular-nums', isTotal && 'font-semibold')}>{pA}</span>
                 {sA && <p className="text-xs text-muted-foreground tabular-nums leading-tight">{sA}</p>}
               </div>
-              <div className="w-14 sm:w-16 shrink-0 text-center">
+              <div className="w-12 sm:w-16 shrink-0 text-center">
                 <Delta oz={ozB - ozA} unit={unit} />
               </div>
-              <div className="w-20 sm:w-28 shrink-0 text-right">
+              <div className="flex-1 text-center">
                 <span className={cn('text-sm tabular-nums', isTotal && 'font-semibold')}>{pB}</span>
                 {sB && <p className="text-xs text-muted-foreground tabular-nums leading-tight">{sB}</p>}
               </div>
@@ -352,19 +358,23 @@ export function TripCompareClient({ tripA, tripB }: Props) {
 
       {/* ── Category breakdown ── */}
       <div className="border border-border rounded-xl overflow-hidden mb-6">
-        {/* Header — identical column widths to the data rows below */}
+        {/* Header */}
         <div className="flex items-center px-4 py-2.5 bg-secondary/30 border-b border-border">
-          <span className="flex-1 min-w-0 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="w-28 sm:w-40 shrink-0 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Category
-          </span>
-          <div className="w-20 sm:w-24 shrink-0 text-right">
-            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>{nameA}</span>
           </div>
-          <div className="w-14 sm:w-16 shrink-0 text-center">
+          <div className="flex-1 text-center">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_A }}>
+              {tripA.name}
+            </span>
+          </div>
+          <div className="w-12 sm:w-16 shrink-0 text-center">
             <span className="text-xs font-medium text-muted-foreground">Δ</span>
           </div>
-          <div className="w-20 sm:w-24 shrink-0 text-right">
-            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>{nameB}</span>
+          <div className="flex-1 text-center">
+            <span className="text-xs font-semibold truncate block" style={{ color: COLOR_B }}>
+              {tripB.name}
+            </span>
           </div>
           <div className="w-8 shrink-0" />
         </div>
@@ -379,25 +389,25 @@ export function TripCompareClient({ tripA, tripB }: Props) {
 
           return (
             <div key={cat} className={cn(!isLast && 'border-b border-border')}>
-              {/* Category summary row — same column widths as header */}
+              {/* Category row — same column structure as header */}
               <button
                 onClick={() => toggleCat(cat)}
                 className="w-full flex items-center px-4 py-3 hover:bg-secondary/20 transition-colors text-left"
               >
-                <span className="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <div className="w-28 sm:w-40 shrink-0 flex items-center gap-1.5 min-w-0">
                   <span className="text-base shrink-0">{CATEGORY_ICONS[cat] ?? '📦'}</span>
-                  <span className="truncate">{cat}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{cat}</span>
                   <span className="text-xs text-muted-foreground font-normal shrink-0 hidden sm:inline">
                     ({catItemsA.length}/{catItemsB.length})
                   </span>
-                </span>
-                <div className="w-20 sm:w-24 shrink-0 text-right">
+                </div>
+                <div className="flex-1 text-center">
                   <span className="text-sm tabular-nums">{formatWeightDisplay(wA, unit, 1).primary}</span>
                 </div>
-                <div className="w-14 sm:w-16 shrink-0 text-center">
+                <div className="w-12 sm:w-16 shrink-0 text-center">
                   <Delta oz={wB - wA} unit={unit} />
                 </div>
-                <div className="w-20 sm:w-24 shrink-0 text-right">
+                <div className="flex-1 text-center">
                   <span className="text-sm tabular-nums">{formatWeightDisplay(wB, unit, 1).primary}</span>
                 </div>
                 <div className="w-8 shrink-0 flex items-center justify-center text-muted-foreground">
