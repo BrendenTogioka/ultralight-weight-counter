@@ -16,7 +16,7 @@ interface Props {
   item: TripItem
   onClose: () => void
   onUpdated: (item: TripItem) => void
-  onRemoved: (id: string) => void
+  onRemoved: (item: TripItem) => void
   onEditGear?: () => void
 }
 
@@ -55,8 +55,8 @@ export function TripItemDetailModal({ item, onClose, onUpdated, onRemoved, onEdi
     const supabase = createClient()
     const { error } = await supabase.from('trip_items').delete().eq('id', item.id)
     if (error) { toast.error('Failed to remove item'); return }
-    onRemoved(item.id)
-    toast.success('Item removed')
+    // Parent surfaces the "removed — undo" toast so undo survives this modal closing.
+    onRemoved(item)
     onClose()
   }
 

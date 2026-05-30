@@ -1,7 +1,8 @@
 'use client'
 
 import type { WeightSummary, WeightUnit } from '@/types'
-import { formatWeightDisplay, getWeightBarSegments } from '@/lib/calculations'
+import { getWeightBarSegments } from '@/lib/calculations'
+import { AnimatedWeight } from '@/components/ui/AnimatedWeight'
 
 interface Props {
   summary: WeightSummary
@@ -83,7 +84,6 @@ function WeightStat({
 }: {
   label: string; oz: number; unit: WeightUnit; color?: string; isTotal?: boolean
 }) {
-  const { primary, secondary } = formatWeightDisplay(oz, unit, 2)
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -92,12 +92,13 @@ function WeightStat({
           {label}
         </span>
       </div>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-        {primary}
-      </p>
-      {secondary && (
-        <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{secondary}</p>
-      )}
+      <AnimatedWeight
+        oz={oz}
+        unit={unit}
+        decimals={2}
+        className="text-2xl font-semibold tracking-tight tabular-nums text-foreground"
+        secondaryClassName="text-xs text-muted-foreground mt-0.5 tabular-nums"
+      />
     </div>
   )
 }

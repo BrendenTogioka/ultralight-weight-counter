@@ -244,11 +244,33 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
     )
   }
 
-  async function handleRemoveItem(itemId: string) {
+  function handleRemoveItem(removed: TripItem) {
+    // The DB row is already deleted by the modal; drop it from local state and
+    // offer an undo that re-inserts the exact same row (id + sort_order intact,
+    // so it returns to its original spot).
     setTrip(prev => ({
       ...prev,
-      trip_items: prev.trip_items?.filter(i => i.id !== itemId),
+      trip_items: prev.trip_items?.filter(i => i.id !== removed.id),
     }))
+
+    toast('Item removed', {
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          const supabase = createClient()
+          const { gear_item, updated_at, ...row } = removed
+          const { error } = await supabase.from('trip_items').insert(row)
+          if (error) {
+            toast.error('Couldn’t restore item')
+            return
+          }
+          setTrip(prev => ({
+            ...prev,
+            trip_items: [...(prev.trip_items ?? []), removed],
+          }))
+        },
+      },
+    })
   }
 
   function handleItemUpdated(updated: TripItem) {
@@ -768,7 +790,7 @@ export function TripDetailClient({ trip: initialTrip, gearTypes, userId }: Props
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onUpdated={updated => { handleItemUpdated(updated); setSelectedItem(null) }}
-          onRemoved={id => { handleRemoveItem(id); setSelectedItem(null) }}
+          onRemoved={removed => { handleRemoveItem(removed); setSelectedItem(null) }}
           onEditGear={() => {
             setEditingGearItem(selectedItem.gear_item!)
             setSelectedItem(null)
