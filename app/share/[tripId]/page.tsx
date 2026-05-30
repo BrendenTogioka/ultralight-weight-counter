@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Trip, TripItem } from '@/types'
 import {
   calculateWeightSummary, calculateCategoryWeights,
-  formatWeight, getWeightBarSegments,
+  formatWeight, formatPounds, formatGrams, getWeightBarSegments,
 } from '@/lib/calculations'
 import { CATEGORY_ICONS } from '@/lib/utils'
 
@@ -81,10 +81,10 @@ export default async function ShareTripPage({
               ].map(({ label, oz }) => (
                 <div key={label}>
                   <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-                  <p className="text-lg font-semibold tabular-nums">{formatWeight(oz, 'oz', 1)}</p>
+                  <p className="text-lg font-semibold tabular-nums">{formatPounds(oz)}</p>
                   {oz > 0 && (
                     <p className="text-xs text-muted-foreground tabular-nums">
-                      {formatWeight(oz, 'g', 0)}
+                      {formatGrams(oz)}
                     </p>
                   )}
                 </div>

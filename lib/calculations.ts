@@ -36,6 +36,16 @@ export function formatWeightShort(oz: number, unit: WeightUnit): string {
   return `${value.toFixed(1)} ${unit}`
 }
 
+// Formats a weight (stored in oz) as decimal pounds, e.g. "1.85 lb"
+export function formatPounds(oz: number, decimals = 2): string {
+  return `${(oz / 16).toFixed(decimals)} lb`
+}
+
+// Formats a weight (stored in oz) as grams, e.g. "840 g"
+export function formatGrams(oz: number, decimals = 0): string {
+  return `${ozToG(oz).toFixed(decimals)} g`
+}
+
 // Converts oz to lbs+oz string for display (e.g. "2 lb 3.4 oz")
 export function formatLbsOz(oz: number): string {
   if (oz < 16) return `${oz.toFixed(1)} oz`

@@ -9,9 +9,9 @@ import {
   calculateWeightSummary,
   calculateCategoryWeights,
   formatWeight,
-  formatLbsOz,
+  formatPounds,
+  formatGrams,
   getEffectiveWeightOz,
-  toOz,
 } from '@/lib/calculations'
 import { CATEGORY_ICONS } from '@/lib/utils'
 
@@ -57,11 +57,11 @@ export function ExportClient({ trip, defaultUnit }: Props) {
         )
       }
 
-      // Summary box
+      // Summary box — pounds + grams for easy mental math
       let y = trip.description || trip.trip_date ? 54 : 42
 
       doc.setFillColor(245, 247, 250)
-      doc.roundedRect(margin, y, pageW - margin * 2, 28, 3, 3, 'F')
+      doc.roundedRect(margin, y, pageW - margin * 2, 32, 3, 3, 'F')
 
       doc.setFontSize(8)
       doc.setTextColor(100, 100, 100)
@@ -72,15 +72,25 @@ export function ExportClient({ trip, defaultUnit }: Props) {
       doc.text('CONSUMABLES', margin + cols * 2 + 6, y + 8)
       doc.text('TOTAL PACK', margin + cols * 3 + 6, y + 8)
 
-      doc.setFontSize(13)
-      doc.setTextColor(20, 20, 20)
-      doc.setFont('helvetica', 'bold')
-      doc.text(formatWeight(summary.base_oz, unit, 1), margin + 6, y + 20)
-      doc.text(formatWeight(summary.worn_oz, unit, 1), margin + cols + 6, y + 20)
-      doc.text(formatWeight(summary.consumable_oz, unit, 1), margin + cols * 2 + 6, y + 20)
-      doc.text(formatWeight(summary.total_oz, unit, 1), margin + cols * 3 + 6, y + 20)
+      const summaryCells = [
+        summary.base_oz,
+        summary.worn_oz,
+        summary.consumable_oz,
+        summary.total_oz,
+      ]
+      summaryCells.forEach((oz, i) => {
+        const x = margin + cols * i + 6
+        doc.setFontSize(13)
+        doc.setTextColor(20, 20, 20)
+        doc.setFont('helvetica', 'bold')
+        doc.text(formatPounds(oz), x, y + 18)
+        doc.setFontSize(8)
+        doc.setTextColor(120, 120, 120)
+        doc.setFont('helvetica', 'normal')
+        doc.text(formatGrams(oz), x, y + 26)
+      })
 
-      y += 38
+      y += 42
 
       // Per category tables
       for (const { category, weight_oz, items: catItems } of categoryWeights) {
@@ -183,7 +193,18 @@ export function ExportClient({ trip, defaultUnit }: Props) {
         }
       })
 
-      const csv = Papa.unparse(rows)
+      // Summary block (pounds + grams) prepended above the item list
+      const summaryCsv = Papa.unparse({
+        fields: ['Summary', 'Pounds', 'Grams'],
+        data: [
+          ['Base weight', formatPounds(summary.base_oz), formatGrams(summary.base_oz)],
+          ['Worn', formatPounds(summary.worn_oz), formatGrams(summary.worn_oz)],
+          ['Consumables', formatPounds(summary.consumable_oz), formatGrams(summary.consumable_oz)],
+          ['Total pack', formatPounds(summary.total_oz), formatGrams(summary.total_oz)],
+        ],
+      })
+
+      const csv = `${summaryCsv}\r\n\r\n${Papa.unparse(rows)}`
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -256,7 +277,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
       {/* Preview table */}
       <h2 className="text-sm font-medium text-foreground mb-4">Preview</h2>
       <div className="border border-border rounded-xl overflow-hidden">
-        {/* Summary */}
+        {/* Summary — always shown in pounds + grams for easy mental math */}
         <div className="grid grid-cols-4 gap-4 px-5 py-4 bg-secondary/30 border-b border-border">
           {[
             { label: 'Base', oz: summary.base_oz },
@@ -266,7 +287,8 @@ export function ExportClient({ trip, defaultUnit }: Props) {
           ].map(({ label, oz }) => (
             <div key={label}>
               <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-              <p className="text-sm font-semibold tabular-nums">{formatWeight(oz, unit, 1)}</p>
+              <p className="text-sm font-semibold tabular-nums">{formatPounds(oz)}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">{formatGrams(oz)}</p>
             </div>
           ))}
         </div>
