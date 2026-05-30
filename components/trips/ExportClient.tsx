@@ -190,6 +190,7 @@ export function ExportClient({ trip, defaultUnit }: Props) {
           [`Total Weight (${unit})`]: formatWeight(oz * item.quantity, unit, 2),
           Included: item.included ? 'Yes' : 'No',
           Notes: item.notes ?? '',
+          'Image URL': gear.image_url ?? '',
         }
       })
 
