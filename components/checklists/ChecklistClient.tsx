@@ -163,7 +163,7 @@ export function ChecklistClient({ checklist: initial }: Props) {
   async function exportPdf() {
     setExportingPdf(true)
     try {
-      const { default: jsPDF } = await import('jspdf')
+      const { default: jsPDF, AcroFormCheckBox } = await import('jspdf')
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageW = doc.internal.pageSize.getWidth()
       const margin = 20
@@ -173,43 +173,52 @@ export function ChecklistClient({ checklist: initial }: Props) {
       doc.setFontSize(20)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(20, 20, 20)
-      doc.text(name, margin, y); y += 10
-
-      // Progress
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(120, 120, 120)
-      doc.text(`${checked} of ${total} packed · ${total > 0 ? Math.round((checked / total) * 100) : 0}%`, margin, y); y += 6
+      doc.text(name, margin, y); y += 8
 
       if (notes) {
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(120, 120, 120)
         doc.text(notes, margin, y, { maxWidth: pageW - margin * 2 }); y += 8
       }
       y += 4
 
       // Items
-      items.forEach(item => {
+      items.forEach((item, idx) => {
         if (y > 270) { doc.addPage(); y = 20 }
         const boxSize = 4
-        // Checkbox
-        doc.setDrawColor(180, 180, 180)
+        const boxTop = y - boxSize + 0.5
+
+        // Visible checkbox outline (renders in every PDF viewer)
+        doc.setDrawColor(150, 150, 150)
         doc.setLineWidth(0.4)
-        doc.rect(margin, y - boxSize + 0.5, boxSize, boxSize)
-        if (item.checked) {
-          doc.setDrawColor(80, 80, 80)
-          doc.setLineWidth(0.6)
-          doc.line(margin + 0.8, y - 1.5, margin + 1.8, y - 0.3)
-          doc.line(margin + 1.8, y - 0.3, margin + 3.4, y - 2.8)
-        }
-        // Name
+        doc.rect(margin, boxTop, boxSize, boxSize)
+
+        // Interactive, clickable checkbox overlaid on the outline. Toggles in
+        // PDF readers that support form fields (Acrobat, Apple Preview, etc.).
+        const checkBox = new AcroFormCheckBox()
+        checkBox.fieldName = `item_${idx}`
+        checkBox.x = margin
+        checkBox.y = boxTop
+        checkBox.width = boxSize
+        checkBox.height = boxSize
+        checkBox.appearanceState = item.checked ? 'On' : 'Off'
+        doc.addField(checkBox)
+
+        // Name — measure its width at the SAME font size it's drawn at, so the
+        // brand that follows never overlaps it.
         doc.setFontSize(10)
-        doc.setFont('helvetica', item.checked ? 'normal' : 'normal')
-        doc.setTextColor(item.checked ? 160 : 30, item.checked ? 160 : 30, item.checked ? 160 : 30)
-        doc.text(item.name, margin + boxSize + 3, y)
-        // Brand
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(30, 30, 30)
+        const nameX = margin + boxSize + 3
+        doc.text(item.name, nameX, y)
+        const nameWidth = doc.getTextWidth(item.name)
+
+        // Brand, placed just after the (correctly measured) name
         if (item.brand) {
           doc.setFontSize(8)
           doc.setTextColor(140, 140, 140)
-          doc.text(item.brand, margin + boxSize + 3 + doc.getTextWidth(item.name) + 3, y)
+          doc.text(item.brand, nameX + nameWidth + 3, y)
         }
         y += 7
       })
